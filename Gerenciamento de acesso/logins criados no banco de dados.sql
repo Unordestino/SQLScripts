@@ -1,0 +1,10 @@
+-- Query para ver informações dos logins criados no banco de dados
+
+SELECT	name, 
+    create_date, 
+    modify_date, 
+    LOGINPROPERTY(name, 'DaysUntilExpiration') DaysUntilExpiration, 
+    LOGINPROPERTY(name, 'PasswordLastSetTime') PasswordLastSetTime, 
+    LOGINPROPERTY(name, 'IsExpired') IsExpired, 
+    LOGINPROPERTY(name, 'IsMustChange') IsMustChange,* 
+From sys.sql_logins
