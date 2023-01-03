@@ -14,4 +14,9 @@ Execute o escript "Demo Procedure Criação Log Contadores"
 
 	Por fim, crie um job que apague os registros da tabela com mais de 60 dias.
 	Executar o script "Deleta os registros da tabela com mais de 60 dias"
+
+- BatchRequests: Transações por segundo no SQL Server
+- User Connection: Quantidade de conexões no banco de dados
+- CPU: Consumo de CPU do servidor
+- Page Life Expectancy: Expectativa de vida em segundos de uma    página na memória do SQL Server
 */
