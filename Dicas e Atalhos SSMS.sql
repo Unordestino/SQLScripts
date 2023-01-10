@@ -38,6 +38,8 @@
 --  16) Selecione o nome da tabela e pressione as teclas ALT + F1. Ela retorna várias informações sobre a tabela de forma simples e rápida, 
 
 --	17)	Exibir informações de Consumo de uma Query 
+
+--	18)	Atualizar o cache local	CTRL+SHIFT+R
 ----------------------------------------------------------------------------------------------------------------------------
 -- OBS: Muito útil na realização de Tuning!!!
 
