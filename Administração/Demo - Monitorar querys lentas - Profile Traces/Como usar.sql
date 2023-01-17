@@ -1,12 +1,7 @@
 /*
 
 
-Execute o arquivo "Demo Procedure Criação do Trace"
-e altere o caminho conforme a inscrução do script.
-Ctrl + H para dar um replace.
-
-
-Em seguida execute o arquivo "Demo Job Trace"
+Execute o arquivo "Demo Job Trace"
 e altere o caminho conforme a inscrução do script.
 Ctrl + H para dar um replace.
 
@@ -17,5 +12,8 @@ Procedure localizada no arquivo "Deleta historico da tabela traces"
 Informativo:
 Nome da procedure: [dbo].[stpCreate_Trace]
 Nome da tabela: [dbo].[Traces]
+
+**Atenção**
+Em caso de erro, dar permissões na pasta para o usuário do agent do sql server
 
 */

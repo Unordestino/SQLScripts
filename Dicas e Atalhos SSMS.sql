@@ -1,3 +1,5 @@
+-- Fortamar querys: http://poorsql.com/
+
 -- TOP AS MELHORES
 
 --	01)	CTRL + N – Cria uma nova janela de query
