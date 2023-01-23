@@ -1,0 +1,16 @@
+Estatísticas cridas manualmente:
+
+Também podemos criá-las manualmente, utilizando o comando CREATE STATISTICS.
+
+CREATE STATISTICS St_Endereco_Manual
+ON dbo.Endereco (Numero, Logradouro);
+
+
+---------------------------------------------
+SP_UPDATESTATS atualiza as estatísticas do banco inteiro, enquanto UPDATE STATISTICS pode atualizar por tabela e podendo chegar ao nível de atualizar uma determinada estatística.
+
+UPDATE STATISTICS dbo.Endereco
+WITH FULLSCAN, ALL
+GO
+
+-------------------------------------------------
