@@ -1,0 +1,11 @@
+-- Remover compressão
+
+ALTER INDEX indexName ON tableName REBUILD PARTITION ALL WITH (DATA_COMPRESSION=NONE)
+
+-- Compressão por linha
+
+ALTER INDEX indexName ON tableName REBUILD PARTITION ALL WITH (DATA_COMPRESSION=ROW)
+
+-- Compressão por página
+
+ALTER INDEX indexName ON tableName REBUILD PARTITION ALL WITH (DATA_COMPRESSION=PAGE)
