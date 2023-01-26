@@ -6,7 +6,10 @@
 
 	--B. Rebuild or reorganize all indexes with fragmentation and update modified statistics on all user databases
 
-	EXECUTE dbo.IndexOptimize
+Use Traces
+GO
+
+EXECUTE dbo.IndexOptimize
 		@Databases = 'USER_DATABASES',
 		@FragmentationLow = NULL,
 		@FragmentationMedium = 'INDEX_REORGANIZE,INDEX_REBUILD_ONLINE,INDEX_REBUILD_OFFLINE',
@@ -16,7 +19,7 @@
 		@UpdateStatistics = 'ALL',
 		@OnlyModifiedStatistics = 'Y',
 		@LogToTable = 'Y',
-		@TimeLimit = 5 
+		@TimeLimit = 7200 -- 2hrs
 	--segundos ****** parâmetro muito importante!!!! Defina em até quanto tempo essa rotina vai executar
 
 -----------------------------------------------------------------------------------------------------------------------------		
@@ -35,12 +38,16 @@
 create procedure stpExclui_Registros_Antigos 
 AS 
 BEGIN 
+	Use Traces
+	Go
+
 	declare  @CommandLog int 
 	select  
 	@CommandLog = 30
 
 	delete from Traces.[dbo].[CommandLog]
 	where StartTime <  DATEADD(dd,@CommandLog*-1,getdate())
+
 END
 
 

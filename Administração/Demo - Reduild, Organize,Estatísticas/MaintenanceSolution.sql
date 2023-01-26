@@ -19,7 +19,7 @@ https://ola.hallengren.com
 
 */
 
-USE [master] -- Specify the database in which the objects will be created.
+USE [Traces] -- Specify the database in which the objects will be created.
 
 SET NOCOUNT ON
 
