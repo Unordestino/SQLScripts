@@ -29,5 +29,18 @@
 
 -----------------------------------------------------------------------------------------------------------------------------		
 
-4º Lembrar de criar um script para delete limpa os logs de uma semana
+4º Adicionar no job o script para delete limpa os logs de um mês
+
+
+create procedure stpExclui_Registros_Antigos 
+AS 
+BEGIN 
+	declare  @CommandLog int 
+	select  
+	@CommandLog = 30
+
+	delete from Traces.[dbo].[CommandLog]
+	where StartTime <  DATEADD(dd,@CommandLog*-1,getdate())
+END
+
 
