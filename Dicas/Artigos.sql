@@ -27,3 +27,17 @@ SQL Server Replication Passo-a-Passo
 
 https://www.devmedia.com.br/sql-server-replication-passo-a-passo/6679
 ------------------------------------------------------------------------------------------------
+
+/*
+Replicação do SQL Server: visão geral de componentes e topografia
+*/
+
+https://www.sqlshack.com/sql-replication-basic-setup-and-configuration/
+------------------------------------------------------------------------------------------------
+
+/*
+SQL Replication: Basic setup and configuration
+*/
+
+https://www.sqlshack.com/sql-replication-basic-setup-and-configuration/
+------------------------------------------------------------------------------------------------
