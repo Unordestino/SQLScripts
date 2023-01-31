@@ -1,0 +1,5 @@
+1º Edite o arquivo "BackupScriptJobs" adicionando o nome da sua instância e o local aonde os scripts serão gerados
+
+
+2º abra um novo powershell e especifique o caminho completo do local do arquivo "BackupScriptJobs" 
+Exemplo: C:\Temp\test.ps1
