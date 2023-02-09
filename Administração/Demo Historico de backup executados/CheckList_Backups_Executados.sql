@@ -93,7 +93,7 @@ GO
 EXEC [dbo].[stpCheckHistory_Backups_Executados]
 
 -- Realize um select na tabela criada
-CheckHistory_Backups_Executados
+SELECT TOP 100 * FROM CheckHistory_Backups_Executados ORDER BY Backup_Start_Date DESC
 
 -- Agora é só criar um job para executar a procedure stpCheckHistory_Backups_Executados
 
