@@ -22,17 +22,17 @@ https://www.devmedia.com.br/introducao-a-sql-server-replication/6497
 ------------------------------------------------------------------------------------------------
 
 /*
-SQL Server Replication Passo-a-Passo
+Tutorial: Preparar o SQL Server para replicação (editor, distribuidor, assinante)
 */
 
-https://www.devmedia.com.br/sql-server-replication-passo-a-passo/6679
+https://learn.microsoft.com/pt-br/sql/relational-databases/replication/tutorial-preparing-the-server-for-replication?view=sql-server-ver16
 ------------------------------------------------------------------------------------------------
 
 /*
-Replicação do SQL Server: visão geral de componentes e topografia
+Tutorial: Configurar a replicação entre dois servidores totalmente conectados (Transacional)
 */
 
-https://www.sqlshack.com/sql-replication-basic-setup-and-configuration/
+https://learn.microsoft.com/pt-br/sql/relational-databases/replication/tutorial-replicating-data-between-continuously-connected-servers?view=sql-server-ver16
 ------------------------------------------------------------------------------------------------
 
 /*

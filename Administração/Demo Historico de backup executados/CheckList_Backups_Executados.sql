@@ -61,8 +61,6 @@ BEGIN
 
 	DECLARE @Dt_Referencia DATETIME
 	SELECT @Dt_Referencia = GETDATE()
-
-	TRUNCATE TABLE [dbo].[CheckHistory_Backups_Executados]
 	
 	INSERT INTO [dbo].[CheckHistory_Backups_Executados] (	[Database_Name], [Name], [Backup_Start_Date], [Tempo_Min], [Position], [Server_Name],
 														[Recovery_Model], [Logical_Device_Name], [Device_Type], [Type], [Tamanho_MB] )
