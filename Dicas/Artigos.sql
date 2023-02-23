@@ -41,3 +41,19 @@ SQL Replication: Basic setup and configuration
 
 https://www.sqlshack.com/sql-replication-basic-setup-and-configuration/
 ------------------------------------------------------------------------------------------------
+
+/*
+SQLOS
+*/
+
+https://sqlonice.com/
+
+------------------------------------------------------------------------------------------------
+
+/*
+TIPOS DE WAITS
+*/
+
+https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-os-wait-stats-transact-sql?redirectedfrom=MSDN&view=sql-server-ver16
+
+------------------------------------------------------------------------------------------------
