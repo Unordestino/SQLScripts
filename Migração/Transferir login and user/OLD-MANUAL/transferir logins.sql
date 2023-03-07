@@ -109,7 +109,7 @@ END
 IF (OBJECT_ID('dbo.stpExporta_Logins') IS NULL) EXEC('CREATE PROCEDURE dbo.stpExporta_Logins AS SELECT 1')
 GO
 
-ALTER PROCEDURE dbo.stpExporta_Logins (
+CREATE PROCEDURE dbo.stpExporta_Logins (
     @Ds_Diretorio_Saida VARCHAR(500),
     @Fl_Permissoes_Database BIT = 0,
     @Fl_Arquivo_Unico BIT = 0

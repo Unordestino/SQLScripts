@@ -1,5 +1,21 @@
 Primeiro execute o arquivo "transferir logins"
 
+
+execute o seguinte script em seu ssms
+
+sp_configure 'show advanced options', 1 
+
+GO 
+RECONFIGURE; 
+GO 
+sp_configure 'Ole Automation Procedures', 1 
+GO 
+RECONFIGURE; 
+GO 
+sp_configure 'show advanced options', 1 
+GO 
+RECONFIGURE;
+
 Ao executar o script execute o comando abaixo para gerar os logins
 
 EXEC dbo.stpExporta_Logins
