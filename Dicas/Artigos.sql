@@ -57,3 +57,11 @@ TIPOS DE WAITS
 https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-os-wait-stats-transact-sql?redirectedfrom=MSDN&view=sql-server-ver16
 
 ------------------------------------------------------------------------------------------------
+
+/*
+ARQUITETURA DE MEMÓRIA SQL SERVER
+*/
+
+https://learn.microsoft.com/en-us/sql/relational-databases/memory-management-architecture-guide?view=sql-server-ver16
+
+------------------------------------------------------------------------------------------------
