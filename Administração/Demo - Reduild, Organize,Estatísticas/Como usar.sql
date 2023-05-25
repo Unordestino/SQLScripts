@@ -5,7 +5,7 @@
 2º Adicione o script abaixo em um job para finalizar a rotina
 
 	--B. Rebuild or reorganize all indexes with fragmentation and update modified statistics on all user databases
-
+	-- Define em quais bases de dados serão aplicado os rebuilds @Databases = 'base1,base2,base3'
 Use Traces
 GO
 
