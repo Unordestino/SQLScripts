@@ -1,0 +1,113 @@
+/* Execute esse script no banco de origem, com isso você vai ter em tela o script para recriar todos os indices, em seguida basta copiar e executar no banco de replica.
+*/
+
+DECLARE @table_name NVARCHAR(128),
+        @index_name NVARCHAR(128),
+        @index_id INT,
+        @index_script NVARCHAR(MAX),
+        @schema_name NVARCHAR(200),
+        @column_name NVARCHAR(MAX),
+        @included_columns NVARCHAR(MAX),
+        @validation_index NVARCHAR(MAX),
+        @with_properties NVARCHAR(MAX);
+
+DECLARE cursor_indexes CURSOR FOR
+SELECT t.name AS table_name,
+       i.name AS index_name,
+       i.index_id,
+       i.object_id,
+       SCHEMA_NAME(t.schema_id) AS schema_name
+FROM sys.tables t
+    JOIN sys.indexes i
+        ON t.object_id = i.object_id
+WHERE i.type = 2
+      AND i.is_primary_key = 0
+      AND t.is_replicated = 1
+      AND t.name NOT LIKE '%sys%'
+ORDER BY t.name,
+         i.index_id;
+
+OPEN cursor_indexes;
+
+FETCH NEXT FROM cursor_indexes
+INTO @table_name,
+     @index_name,
+     @index_id,
+     @index_script,
+     @schema_name;
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+
+    SET @validation_index
+        = N'IF NOT EXISTS (SELECT I.name FROM sys.indexes I JOIN sys.tables T ON T.Object_id = I.Object_id '
+          + N'WHERE I.name = ''' + @index_name + N''' and T.name = ''' + @table_name + N''')';
+
+
+    SET @index_script
+        = N' CREATE NONCLUSTERED INDEX [' + @index_name + N'] ON [' + @schema_name + N'].[' + @table_name + N'] ';
+    SET @column_name = N'';
+    SET @included_columns = N'';
+
+    SELECT @column_name = (STUFF(
+                           (
+                               SELECT ',' + '[' + c.name + ']'
+                               FROM sys.columns c
+                                   JOIN sys.index_columns ic
+                                       ON c.object_id = ic.object_id
+                                          AND c.column_id = ic.column_id
+                               WHERE ic.object_id = OBJECT_ID(@schema_name+'.'+@table_name)
+                                     AND ic.index_id = @index_id
+                                     AND ic.is_included_column = 0
+                               ORDER BY ic.index_column_id
+                               FOR XML PATH('')
+                           ),
+                           1,
+                           1,
+                           '('
+                                ) + ')'
+                          );
+
+
+    SELECT @included_columns =
+    (
+        SELECT 'INCLUDE ' + STUFF(
+                            (
+                                SELECT ',' + '[' + c.name + ']'
+                                FROM sys.columns c
+                                    JOIN sys.index_columns ic
+                                        ON c.object_id = ic.object_id
+                                           AND c.column_id = ic.column_id
+                                WHERE ic.object_id = OBJECT_ID(@schema_name+'.'+@table_name)
+                                      AND ic.index_id = @index_id
+                                      AND ic.is_included_column = 1
+                                ORDER BY ic.index_column_id
+                                FOR XML PATH('')
+                            ),
+                            1,
+                            1,
+                            '('
+                                 ) + ')'
+    );
+
+    --opção valida a partir do SQL Server 2016 SP2
+    SET @with_properties = (' WITH (DATA_COMPRESSION = PAGE)');
+
+    SET @index_script
+        = @validation_index + CHAR(13) + ISNULL(@index_script,'') + ISNULL(@column_name, '') + ISNULL(@included_columns, '')
+          +  @with_properties;
+
+    PRINT @index_script;
+
+    FETCH NEXT FROM cursor_indexes
+    INTO @table_name,
+         @index_name,
+         @index_id,
+         @index_script,
+         @schema_name;
+
+
+END;
+
+CLOSE cursor_indexes;
+DEALLOCATE cursor_indexes;

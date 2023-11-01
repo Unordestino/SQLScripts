@@ -1,0 +1,22 @@
+--USE SeuBancoDeDados;
+
+DECLARE @Script NVARCHAR(MAX);
+
+DECLARE script_cursor CURSOR FOR
+SELECT 'CREATE NONCLUSTERED INDEX ' + QUOTENAME(t.name) + ' ON ' + QUOTENAME(i.name) + CHAR(13) + CHAR(10) + 'GO'
+FROM sys.tables AS t
+INNER JOIN sys.indexes AS i ON t.object_id = i.object_id
+WHERE i.type_desc = 'NONCLUSTERED';  -- Filtro apenas para índices não clusterizados
+
+OPEN script_cursor;
+
+FETCH NEXT FROM script_cursor INTO @Script;
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    PRINT @Script;
+    FETCH NEXT FROM script_cursor INTO @Script;
+END;
+
+CLOSE script_cursor;
+DEALLOCATE script_cursor;
