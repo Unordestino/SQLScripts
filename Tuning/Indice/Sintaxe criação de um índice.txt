@@ -1,0 +1,3 @@
+create clustered index SK01_TestesIndices on TestesIndices(Cod) with(FILLFACTOR=95) 
+create nonclustered index SK01_TestesIndices on TestesIndices(Data) with(FILLFACTOR=95) 
+create nonclustered index SK01_TestesIndices on TestesIndices(Data) INCLUDE(SimulandoVariasColunasNoInclude) with(FILLFACTOR=95) 

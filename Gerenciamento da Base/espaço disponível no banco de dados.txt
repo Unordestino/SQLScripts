@@ -1,0 +1,17 @@
+USE [YourDatabaseName]; -- Altere para o nome do seu banco de dados
+GO
+
+SELECT 
+    name AS [FileName], 
+    size/128.0 AS [TotalSpaceMB], 
+    size/128.0 - CAST(FILEPROPERTY(name, 'SpaceUsed') AS int)/128.0 AS [AvailableSpaceMB]
+FROM 
+    sys.database_files
+WHERE 
+    type_desc = 'ROWS';
+
+
+/*
+Este script mostra o nome de cada arquivo de dados, o espaço total e o espaço disponível em megabytes. Ele filtra para mostrar apenas os arquivos de dados (type_desc = 'ROWS'), excluindo os arquivos de log.
+
+*/

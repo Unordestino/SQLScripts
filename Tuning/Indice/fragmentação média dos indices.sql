@@ -4,6 +4,7 @@ select
     nome_tabela = object_name(b.object_id), 
     nome_indice = name,  
     fragmentacao_media = avg_fragmentation_in_percent, 
+	PAGE_COUNT,
     script = case 
         when avg_fragmentation_in_percent > 30 then 'alter index ' + name + ' on ' + object_name(b.object_id) + ' rebuild with (online = on)' 
         when avg_fragmentation_in_percent >= 5 and avg_fragmentation_in_percent <= 30 then 'alter index ' + name + ' on ' + object_name(b.object_id) + ' reorganize' 

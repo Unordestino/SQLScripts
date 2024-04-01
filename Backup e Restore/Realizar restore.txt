@@ -1,0 +1,81 @@
+--Base Já Existente:
+RESTORE DATABASE TreinamentoDBA
+FROM DISK = 'C:\Fabricio\SQL Server\Treinamento\TreinamentoDBA_Dados.bak'
+WITH RECOVERY, REPLACE, STATS = 5
+Base Nova:
+RESTORE FILELISTONLY
+FROM DISK = 'C:\Fabricio\SQL Server\Treinamento\TreinamentoDBA_Dados.bak'
+-----------------------------------------------------------------------------------------------------------------------------
+--RESTORE DATABASE TreinamentoDBA_TesteRestore
+FROM DISK = 'C:\Fabricio\SQL Server\Treinamento\TreinamentoDBA_Dados.bak'
+WITH RECOVERY, STATS = 5,
+MOVE 'TreinamentoDBA' TO 'C:\Fabricio\SQL Server\Treinamento\TreinamentoDBA_TesteRestore.mdf',
+MOVE 'TreinamentoDBA_log' TO 'C:\Fabricio\SQL Server\Treinamento\TreinamentoDBA_TesteRestore_Log.ldf'
+-----------------------------------------------------------------------------------------------------------------------------
+--Sintaxe restore de mais de um arquivo de backup
+--	Restore FULL
+RESTORE DATABASE TreinamentoDBA
+FROM DISK = 'C:\TEMP\TreinamentoDBA_Dados.bak'
+WITH NORECOVERY, REPLACE, STATS = 5
+
+--	Restore Diferencial
+RESTORE DATABASE TreinamentoDBA
+FROM disk = 'C:\TEMP\TreinamentoDBA_Diff.bak'
+WITH NORECOVERY, STATS = 5
+
+--	Restore de 1 Backup do Log
+RESTORE LOG TreinamentoDBA
+FROM DISK = 'C:\TEMP\Log\TreinamentoDBA_Log1.bak'
+WITH NORECOVERY
+-----------------------------------------------------------------------------------------------------------------------------
+--Restore até um intervalo de tempo
+--	Restore FULL
+RESTORE DATABASE TreinamentoDBA
+FROM DISK = 'C:\TEMP\TreinamentoDBA_Dados.bak'
+WITH NORECOVERY, REPLACE, STATS = 5
+
+--	Restore Diferencial
+RESTORE DATABASE TreinamentoDBA
+FROM DISK = 'C:\TEMP\TreinamentoDBA_Diff.bak'
+WITH NORECOVERY, REPLACE, STATS = 5
+
+--	Restore Log
+RESTORE LOG TreinamentoDBA
+FROM DISK = 'C:\TEMP\Log\TreinamentoDBA_Log1.bak'
+WITH NORECOVERY
+
+--	Restore Log até às XX horas
+RESTORE LOG TreinamentoDBA
+FROM DISK = 'C:\TEMP\Log\TreinamentoDBA_Log2.bak'
+WITH RECOVERY,STOPAT = '2024-02-11 22:00:10.253'
+-----------------------------------------------------------------------------------------------------------------------------
+--Restore com standby
+--	Restore FULL
+RESTORE DATABASE TreinamentoDBA
+FROM DISK = 'C:\TEMP\TreinamentoDBA_Standby_Dados.bak'
+WITH NORECOVERY, REPLACE, STATS = 5
+
+--	Restore Diferencial
+RESTORE DATABASE TreinamentoDBA
+FROM DISK = 'C:\TEMP\TreinamentoDBA_Diff.bak'
+WITH NORECOVERY, REPLACE, STATS = 5
+
+--	Restore Log 1 
+RESTORE LOG TreinamentoDBA
+FROM DISK = 'C:\TEMP\TreinamentoDBA_Log.bak'
+WITH STANDBY='C:\TEMP\TreinamentoDBA_standby_file.bak',FILE = 1
+
+--confere os dados
+select * from TreinamentoDBA..Teste_Restore
+
+--	Restore Log 2 apenas para validação
+RESTORE LOG TreinamentoDBA
+FROM DISK = 'C:\TEMP\TreinamentoDBA_Log.bak'
+WITH STANDBY='C:\TEMP\TreinamentoDBA_standby_file.bak',FILE = 2
+
+--confere os dados
+select * from TreinamentoDBA..Teste_Restore
+
+--Era isso que eu queria. Vou deixar a base ONLINE.
+restore database TreinamentoDBA with recovery
+-----------------------------------------------------------------------------------------------------------------------------

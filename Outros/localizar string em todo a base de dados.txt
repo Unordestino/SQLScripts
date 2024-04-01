@@ -1,0 +1,43 @@
+
+
+
+DECLARE @id INT  -- Variável para armazenar o valor da coluna ID da tabela
+
+-- Declare um cursor para percorrer os registros da tabela
+DECLARE cursorExemplo CURSOR FOR
+select object_id from sys.tables
+
+-- Variável para armazenar o resultado da consulta
+DECLARE @resultado VARCHAR(MAX)
+
+-- Abra o cursor
+OPEN cursorExemplo
+
+-- Inicialize o cursor
+FETCH NEXT FROM cursorExemplo INTO @id
+
+-- Loop através dos registros
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    -- Execute a consulta e obtenha o primeiro resultado
+	select top 1 @resultado= concat('select * from [dbo].[' ,name, '] where id LIKE ', '''%8BEBB9C3-3661-41D8-88B5-0000598EEEF0%'';', '')  FROM SYS.TABLES where object_id = @id 
+   
+
+
+	PRINT @resultado  + CHAR(13) + CHAR(10) + 'GO'
+
+    -- Pegue o próximo registro
+    FETCH NEXT FROM cursorExemplo INTO @id
+END
+
+-- Feche o cursor
+CLOSE cursorExemplo
+
+-- Libere os recursos do cursor
+DEALLOCATE cursorExemplo
+
+
+
+
+
+

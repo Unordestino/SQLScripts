@@ -1,0 +1,8 @@
+SELECT 
+    name AS [FileName], 
+    size/128.0 AS [TotalSpaceMB], 
+    size/128.0 - CAST(FILEPROPERTY(name, 'SpaceUsed') AS int)/128.0 AS [AvailableSpaceMB]
+FROM 
+    sys.database_files
+WHERE 
+    type_desc = 'LOG';

@@ -1,0 +1,6 @@
+Import-Module SQLServer
+
+$serverName = "NomeDoServidor"
+$instanceName = "NomeDaInstancia"  # Deixe em branco se for uma instância padrão
+$services = Get-Service -ComputerName $serverName | Where-Object {$_.DisplayName -like "*SQL Server*"}
+$services | Select-Object DisplayName

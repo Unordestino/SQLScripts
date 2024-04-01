@@ -1,0 +1,8 @@
+--Sintaxe backup FULL
+BACKUP DATABASE [NOME_DATABASE]	TO DISK = N’C:\Caminho\Nome_Database_Dados.bak’	     WITH INIT, COMPRESSION, STATS = 10, CHECKSUM
+
+--Sintaxe backup Diferencial
+BACKUP DATABASE [NOME_DATABASE]		TO DISK = N’C:\Caminho\Nome_Database_Dif.bak’		   WITH DIFFERENTIAL, INIT, COMPRESSION, STATS = 10, CHECKSUM
+
+--Sintaxe backup Log
+BACKUP LOG [NOME_DATABASE]		TO DISK = N’C:\Caminho\Nome_Database_Log.bak’		WITH INIT, COMPRESSION, STATS = 10
