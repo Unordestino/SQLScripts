@@ -1,0 +1,35 @@
+/*
+Essa consulta mostra exatamenta quantos % de uma cpu uma consulta está utilizando
+Caso você observe valores acima de 100 significa que a consulta está utilizando paralelismo
+*/
+
+SELECT 
+    session_id, 
+    start_time, 
+    GETDATE() AS date_atual, 
+    DATEDIFF(ms, start_time, GETDATE()) AS tmp_total_exec,
+    cpu_time, 
+    cpu_time / CAST(DATEDIFF(ms, start_time, GETDATE()) + 0.1 AS DECIMAL(18,2)) AS perc_utilzd  
+FROM 
+    sys.dm_exec_requests
+WHERE 
+    session_id = 65;
+
+/*
+Uma versão mais detalhada dessa consulta.-------------------------------------------------
+*/
+
+SELECT 
+    r.session_id, 
+    r.start_time, 
+    GETDATE() AS date_atual, 
+    DATEDIFF(ms, r.start_time, GETDATE()) AS tmp_total_exec,
+    r.cpu_time, 
+    r.cpu_time / CAST(DATEDIFF(ms, r.start_time, GETDATE()) + 0.1 AS DECIMAL(18,2)) AS perc_utilzd,
+	DB_NAME(r.database_id) as db_name, sh.text, ph.query_plan
+FROM 
+    sys.dm_exec_requests as r 
+	JOIN sys.dm_exec_sessions as es ON es.session_id = r.session_id
+	OUTER APPLY sys.dm_exec_sql_text(r.sql_handle) as sh
+	OUTER APPLY sys.dm_exec_query_plan(r.plan_handle) as ph
+	where es.is_user_process = 1 and r.session_id <> @@SPID

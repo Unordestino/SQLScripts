@@ -1,0 +1,15 @@
+-- Espaço utilizado pela TS
+/*
+Retorna o total de workers ativos e calcula quanto esses workers estão consumindo de memória no momento.
+
+*/
+SELECT --physical_memory_kb / 1024.,
+	      --committed_kb / 1024.,
+       max_workers_count,
+       s.TotalWorkers, 
+       stack_size_in_bytes / 1024. /1024. AS stack_size_in_mb,
+       (TotalWorkers * stack_size_in_bytes) / 1024. / 1024. AS ThreadStack_Size_in_MB
+FROM sys.dm_os_sys_info
+CROSS APPLY (SELECT SUM(CONVERT(FLOAT, current_workers_count)) AS TotalWorkers
+              FROM sys.dm_os_schedulers) AS s
+GO

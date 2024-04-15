@@ -1,0 +1,34 @@
+- isualizar o log de erro utilizando a function xp_readerrorlog
+    
+    A função xp_readerrorlog é um procedimento estendido fornecido pelo SQL Server que permite a leitura dos logs de erro do SQL Server. Essa função tem os seguintes parâmetros:
+    
+    1. @p1 (int, opcional): Especifica o número do arquivo de log a ser lido. O valor padrão é 0, que indica o arquivo de log atual. Se você fornecer um valor maior que 0, ele corresponderá a um arquivo de log anterior.
+    
+    2. @p2 (nvarchar(255), opcional): Especifica o texto de pesquisa para filtrar os resultados dos logs. Se você fornecer um valor para esse parâmetro, apenas as linhas de log que contenham o texto fornecido serão retornadas.
+    
+    3. @p3 (nvarchar(255), opcional): Especifica a data de início para filtrar os resultados dos logs. Apenas as linhas de log após essa data serão retornadas.
+    
+    4. @p4 (nvarchar(255), opcional): Especifica a data de término para filtrar os resultados dos logs. Apenas as linhas de log antes dessa data serão retornadas.
+    
+    5. @p5 (nvarchar(255), opcional): Especifica o tipo de log a ser lido. Os valores possíveis são:
+    
+    - 'ErrorLog': Lê apenas o arquivo de log de erros.
+    - 'SQLLog': Lê apenas o arquivo de log SQL Server.
+    - 'AgentLog': Lê apenas o arquivo de log do SQL Server Agent.
+    
+    Aqui está um exemplo de como usar o xp_readerrorlog com alguns parâmetros:
+
+EXEC xp_readerrorlog 0, 1, 'Login failed', '2023-06-01', '2023-06-30';
+
+ste exemplo lê o arquivo de log atual, procura por linhas que contenham "Login failed" e estão no intervalo de datas de 1º de junho de 2023 a 30 de junho de 2023.
+
+Lembre-se de que a função xp_readerrorlog é um procedimento estendido e, por padrão, só pode ser executada por membros do papel de servidor fixo sysadmin. Certifique-se de ter as permissões adequadas para executar esse procedimento.
+
+EXEC xp_readerrorlog  
+    0,  
+    1,  
+    N'fail',  
+    N'',  
+    N'2023-06-13 00:00:01.000',  
+    N'2023-06-14 23:59:59.999', 
+    N'desc'

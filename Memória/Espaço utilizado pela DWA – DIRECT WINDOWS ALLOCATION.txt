@@ -1,0 +1,13 @@
+
+-- Quanto de espaço utilizado por esse cara? 
+SELECT base_address, description, name, SUM(region_size_in_bytes) / 1024./1024. AS size_mb
+  FROM sys.dm_os_loaded_modules
+ INNER JOIN sys.dm_os_virtual_address_dump
+    ON sys.dm_os_virtual_address_dump.region_allocation_base_address = dm_os_loaded_modules.base_address
+ GROUP BY base_address, description, name
+ ORDER BY size_mb DESC
+GO
+-- Espaço total...
+SELECT SUM(region_size_in_bytes) / 1024./1024. FROM sys.dm_os_virtual_address_dump
+WHERE region_allocation_base_address IN (SELECT base_address FROM sys.dm_os_loaded_modules)
+GO
