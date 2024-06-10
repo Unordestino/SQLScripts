@@ -1,0 +1,22 @@
+-- Encontrar o Plano de Execução e a Query
+
+-- Encontrar a query_id
+SELECT q.query_id, qt.query_sql_text
+FROM sys.query_store_query_text AS qt
+JOIN sys.query_store_query AS q ON qt.query_text_id = q.query_text_id
+WHERE qt.query_sql_text LIKE '%SELECT * FROM NomeDaTabela WHERE Coluna = ''valor''%';
+
+-- Encontrar o plan_id
+SELECT p.plan_id, p.query_id
+FROM sys.query_store_plan AS p
+WHERE p.query_id = <query_id>;
+
+
+--  Forçar o Plano de Execução
+
+EXEC sp_query_store_force_plan @query_id = <query_id>, @plan_id = <plan_id>;
+
+
+-- Desforçar o Plano (se necessário)
+
+EXEC sp_query_store_unforce_plan @query_id = <query_id>, @plan_id = <plan_id>;

@@ -1,0 +1,205 @@
+-- Habilitar xp_cmdshell
+EXEC sp_configure 'show advanced options', 1;
+RECONFIGURE;
+EXEC sp_configure 'xp_cmdshell', 1;
+RECONFIGURE;
+
+-- Defina o diretório onde estão os arquivos .bak
+DECLARE @directory NVARCHAR(255) = N'E:\SQL-BACKUP\full';
+
+IF OBJECT_ID('tempdb..#FileList') IS NOT NULL
+BEGIN
+    DROP TABLE #FileList
+END
+
+-- Tabela temporária para armazenar os resultados do xp_cmdshell
+CREATE TABLE #FileList (
+    FileName NVARCHAR(255)
+);
+
+-- Executar xp_cmdshell para listar arquivos .bak e armazenar na tabela temporária
+INSERT INTO #FileList (FileName)
+EXEC xp_cmdshell 'dir E:\SQL-BACKUP\full\*.bak /b';
+
+-- Remover entradas nulas ou inválidas
+DELETE FROM #FileList WHERE FileName IS NULL OR FileName = 'File Not Found';
+
+IF OBJECT_ID('tempdb..#FileListOnly') IS NOT NULL
+BEGIN
+    DROP TABLE #FileListOnly
+END
+
+-- Tabela temporária para armazenar informações de FILELISTONLY
+CREATE TABLE #FileListOnly (
+    LogicalName NVARCHAR(128),
+    PhysicalName NVARCHAR(260),
+    Type CHAR(1),
+    FileGroupName NVARCHAR(128),
+    Size NUMERIC(20, 0),
+    MaxSize NUMERIC(20, 0),
+    FileID BIGINT,
+    CreateLSN NUMERIC(25, 0),
+    DropLSN NUMERIC(25, 0),
+    UniqueID UNIQUEIDENTIFIER,
+    ReadOnlyLSN NUMERIC(25, 0),
+    ReadWriteLSN NUMERIC(25, 0),
+    BackupSizeInBytes BIGINT,
+    SourceBlockSize INT,
+    FileGroupID INT,
+    LogGroupGUID UNIQUEIDENTIFIER,
+    DifferentialBaseLSN NUMERIC(25,0),
+    DifferentialBaseGUID UNIQUEIDENTIFIER,
+    IsReadOnly BIT,
+    IsPresent BIT,
+    TDEThumbprint VARBINARY(32),
+    SnapshotUrl NVARCHAR(128)
+);
+
+IF OBJECT_ID('tempdb..#HeaderOnly') IS NOT NULL
+BEGIN
+    DROP TABLE #HeaderOnly
+END
+
+-- Tabela temporária para armazenar informações de HEADERONLY
+CREATE TABLE #HeaderOnly (
+    BackupName NVARCHAR(128),
+    BackupDescription NVARCHAR(255),
+    BackupType INT,
+    ExpirationDate DATETIME,
+    Compressed BIT,
+    Position INT,
+    DeviceType INT,
+    UserName NVARCHAR(128),
+    ServerName NVARCHAR(128),
+    DatabaseName NVARCHAR(128),
+    DatabaseVersion INT,
+    DatabaseCreationDate DATETIME,
+    BackupSize NUMERIC(20, 0),
+    FirstLSN NUMERIC(25, 0),
+    LastLSN NUMERIC(25, 0),
+    CheckpointLSN NUMERIC(25, 0),
+    DatabaseBackupLSN NUMERIC(25, 0),
+    BackupStartDate DATETIME,
+    BackupFinishDate DATETIME,
+    SortOrder INT,
+    CodePage INT,
+    UnicodeLocaleId INT,
+    UnicodeComparisonStyle INT,
+    CompatibilityLevel INT,
+    SoftwareVendorId INT,
+    SoftwareVersionMajor INT,
+    SoftwareVersionMinor INT,
+    SoftwareVersionBuild INT,
+    MachineName NVARCHAR(128),
+    Flags INT,
+    BindingID UNIQUEIDENTIFIER,
+    RecoveryForkID UNIQUEIDENTIFIER,
+    Collation NVARCHAR(128),
+    FamilyGUID UNIQUEIDENTIFIER,
+    HasBulkLoggedData BIT,
+    IsSnapshot BIT,
+    IsReadOnly BIT,
+    IsSingleUser BIT,
+    HasBackupChecksums BIT,
+    IsDamaged BIT,
+    BeginsLogChain BIT,
+    HasIncompleteMetaData BIT,
+    IsForceOffline BIT,
+    IsCopyOnly BIT,
+    FirstRecoveryForkID UNIQUEIDENTIFIER,
+    ForkPointLSN NUMERIC(25, 0),
+    RecoveryModel NVARCHAR(60),
+    DifferentialBaseLSN NUMERIC(25, 0),
+    DifferentialBaseGUID UNIQUEIDENTIFIER,
+    BackupTypeDescription NVARCHAR(60),
+    BackupSetGUID UNIQUEIDENTIFIER,
+    CompressedBackupSize BIGINT,
+    Containment NVARCHAR(60),
+    KeyAlgorithm NVARCHAR(32),
+    EncryptorThumbprint VARBINARY(20),
+    EncryptorType NVARCHAR(32)
+);
+
+DECLARE @fileName NVARCHAR(255);
+DECLARE @backupFile NVARCHAR(255);
+DECLARE @logicalData NVARCHAR(128);
+DECLARE @logicalLog NVARCHAR(128);
+DECLARE @databaseName NVARCHAR(128);
+DECLARE @restoreCommand NVARCHAR(MAX);
+DECLARE @newname NVARCHAR(MAX);
+DECLARE @newnamelog NVARCHAR(MAX);
+
+SET @restoreCommand = '';
+
+DECLARE fileCursor CURSOR FOR 
+SELECT FileName 
+FROM #FileList;
+
+OPEN fileCursor;
+FETCH NEXT FROM fileCursor INTO @fileName;
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    SET @backupFile = @directory + '\' + @fileName;
+
+    -- Obter informações de HEADERONLY
+    TRUNCATE TABLE #HeaderOnly;
+    INSERT INTO #HeaderOnly
+    EXEC ('RESTORE HEADERONLY FROM DISK = ''' + @backupFile + '''');
+
+    -- Obter o nome do banco de dados original
+    SELECT @databaseName = DatabaseName
+    FROM #HeaderOnly;
+
+    -- Obter informações de FILELISTONLY
+    TRUNCATE TABLE #FileListOnly;
+    INSERT INTO #FileListOnly
+    EXEC ('RESTORE FILELISTONLY FROM DISK = ''' + @backupFile + '''');
+
+    -- Obter nomes lógicos dos arquivos de dados e log
+    SELECT @logicalData = LogicalName 
+    FROM #FileListOnly 
+    WHERE [Type] = 'D';
+
+    SELECT @logicalLog = LogicalName 
+    FROM #FileListOnly 
+    WHERE [Type] = 'L';
+
+    -- Obter nomes físicos dos arquivos de dados e log e extrair a parte após a última barra invertida
+    SELECT @newname = REVERSE(SUBSTRING(REVERSE(PhysicalName), 1, CHARINDEX('\', REVERSE(PhysicalName)) - 1))
+    FROM #FileListOnly 
+    WHERE [Type] = 'D';
+
+    SELECT @newnamelog = REVERSE(SUBSTRING(REVERSE(PhysicalName), 1, CHARINDEX('\', REVERSE(PhysicalName)) - 1))
+    FROM #FileListOnly 
+    WHERE [Type] = 'L';
+
+    -- Gerar comando de RESTORE
+    SET @restoreCommand = @restoreCommand + '
+RESTORE DATABASE [' + @databaseName + '] 
+FROM DISK = ''' + @backupFile + ''' 
+WITH FILE = 1, 
+MOVE ''' + @logicalData + ''' TO ''D:\SQL-DATA\' + @newname + ''',
+MOVE ''' + @logicalLog + ''' TO ''D:\SQL-LOG\' + @newnamelog +''',
+NOUNLOAD, STATS = 10;
+';
+
+    FETCH NEXT FROM fileCursor INTO @fileName;
+END
+
+CLOSE fileCursor;
+DEALLOCATE fileCursor;
+
+-- Exibir os comandos gerados
+PRINT @restoreCommand;
+
+-- Limpar
+DROP TABLE #FileList;
+DROP TABLE #FileListOnly;
+DROP TABLE #HeaderOnly;
+
+-- Desabilitar xp_cmdshell por segurança
+EXEC sp_configure 'xp_cmdshell', 0;
+RECONFIGURE;
+EXEC sp_configure 'show advanced options', 0;
+RECONFIGURE;

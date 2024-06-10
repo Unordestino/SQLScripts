@@ -1,0 +1,61 @@
+--tabela com 10 gb
+
+-- Criar banco de dados
+CREATE DATABASE TestDB;
+GO
+
+-- Criar tabela
+USE TestDB;
+GO
+
+CREATE TABLE LargeTable (
+    ID INT IDENTITY PRIMARY KEY,
+    ColumnA VARCHAR(1000) DEFAULT REPLICATE('A', 1000),  -- 1 KB
+    ColumnB VARCHAR(1000) DEFAULT REPLICATE('B', 1000),  -- 1 KB
+    ColumnC VARCHAR(1000) DEFAULT REPLICATE('C', 1000),  -- 1 KB
+    ColumnD VARCHAR(1000) DEFAULT REPLICATE('D', 1000),  -- 1 KB
+    ColumnE VARCHAR(1000) DEFAULT REPLICATE('E', 1000),  -- 1 KB
+    ColumnF VARCHAR(1000) DEFAULT REPLICATE('F', 1000),  -- 1 KB
+    ColumnG VARCHAR(1000) DEFAULT REPLICATE('G', 1000),  -- 1 KB
+    ColumnH VARCHAR(1000) DEFAULT REPLICATE('H', 1000),  -- 1 KB
+    ColumnI VARCHAR(1000) DEFAULT REPLICATE('I', 1000),  -- 1 KB
+    ColumnJ VARCHAR(1000) DEFAULT REPLICATE('J', 1000),  -- 1 KB
+    CreateDate DATETIME DEFAULT GETDATE()
+);
+GO
+
+-- Inserir dados
+SET NOCOUNT ON;
+
+DECLARE @Counter INT = 0;
+DECLARE @BatchSize INT = 1000;
+DECLARE @MaxRecords INT = 1048576;  -- 1,048,576 registros
+
+WHILE @Counter < @MaxRecords
+BEGIN
+    INSERT INTO LargeTable DEFAULT VALUES;
+
+    SET @Counter = @Counter + 1;
+
+    IF @Counter % @BatchSize = 0
+    BEGIN
+        PRINT CONCAT('Inserted ', @Counter, ' records.');
+    END
+END
+
+PRINT 'Data insertion completed.';
+GO
+
+-- Verificar o tamanho da tabela
+USE TestDB;
+GO
+
+EXEC sp_spaceused 'LargeTable';
+GO
+
+-- Limpar o ambiente (opcional)
+USE master;
+GO
+
+DROP DATABASE TestDB;
+GO
