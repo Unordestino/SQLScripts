@@ -1,0 +1,6 @@
+-- Quantidade de CPU
+select * from sys.dm_os_sys_info
+-- Quantidade de socket
+SELECT * FROM sys.dm_os_nodes
+-- Quantidade de CPU utilizadas
+SELECT * FROM sys.dm_os_schedulers where status =  'VISIBLE ONLINE' 

@@ -1,0 +1,36 @@
+DECLARE @dbName NVARCHAR(255),
+        @fileName NVARCHAR(255),
+        @physicalName NVARCHAR(255),
+        @newPath NVARCHAR(255) = 'L:\PRODUCAO\'; -- Novo caminho para os arquivos de log
+
+DECLARE db_cursor CURSOR FOR
+SELECT db_name(database_id), name, physical_name
+FROM sys.master_files
+WHERE type_desc = 'LOG'
+
+OPEN db_cursor
+FETCH NEXT FROM db_cursor INTO @dbName, @fileName, @physicalName
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    -- Extração do nome do arquivo da coluna physical_name
+    DECLARE @fileBaseName NVARCHAR(255)
+    SET @fileBaseName = REVERSE(SUBSTRING(REVERSE(@physicalName), 1, CHARINDEX('\', REVERSE(@physicalName)) - 1))
+    
+    -- Construção do novo caminho completo para o arquivo de log
+    DECLARE @newFileName NVARCHAR(255)
+    SET @newFileName = @newPath + @fileBaseName
+    
+    DECLARE @sql NVARCHAR(MAX)
+    SET @sql = 'ALTER DATABASE ' + QUOTENAME(@dbName) + 
+               ' MODIFY FILE (NAME = ' + QUOTENAME(@fileName) + 
+               ', FILENAME = ''' + @newFileName + ''')'
+    
+    PRINT @sql
+    -- EXEC sp_executesql @sql  -- Descomente esta linha para executar os comandos gerados
+    
+    FETCH NEXT FROM db_cursor INTO @dbName, @fileName, @physicalName
+END
+
+CLOSE db_cursor
+DEALLOCATE db_cursor

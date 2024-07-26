@@ -1,0 +1,150 @@
+Quando você quiser uma verificação geral de saúde, execute sp_Blitz .
+Para saber quais consultas estão usando mais recursos, execute sp_BlitzCache .
+Para analisar quais índices estão faltando ou deixando você lento, execute sp_BlitzIndex .
+Para descobrir por que o servidor está lento agora, execute sp_BlitzFirst .
+
+
+
+------------------------------------------------------------------------
+
+sp_Blitz: Verificação geral da saúde
+Execute sp_Blitz diariamente ou semanalmente para uma verificação geral de saúde. Basta executá-lo no SQL Server Management Studio e você obterá uma lista priorizada de problemas no seu servidor agora mesmo.
+
+As colunas de saída incluem:
+
+Prioridade - 1 é o mais urgente, coisas que podem fazer você ser demitido. Os avisos ficam progressivamente menos urgentes.
+FindingsGroup, Findings - descreva o problema que sp_Blitz encontrou no servidor.
+DatabaseName - o banco de dados com problema. Se for nulo, é um problema de todo o servidor.
+URL - copie e cole em um navegador para obter mais informações.
+Detalhes - não apenas texto sem graça, mas coisas geradas dinamicamente com mais informações.
+Parâmetros comumente usados:
+
+@CheckUserDatabaseObjects = 0 - por padrão, verificamos dentro dos bancos de dados do usuário coisas como gatilhos ou heaps. Desative isso (0) para tornar as verificações mais rápidas ou ignore coisas que você não pode consertar se estiver gerenciando bancos de dados de terceiros. Se um servidor tiver mais de 50 bancos de dados, @CheckUserDatabaseObjects será desativado automaticamente, a menos que...
+@BringThePain = 1 - necessário se você quiser executar @CheckUserDatabaseObjects = 1 com mais de 50 bancos de dados. Vai ser lento.
+@CheckServerInfo = 1 - inclui linhas adicionais na prioridade 250 com detalhes de configuração do servidor, como contas de serviço.
+@IgnorePrioritiesAbove = 50 - se você quiser um boletim diário dos avisos mais importantes, defina @IgnorePrioritiesAbove = 50 para receber apenas as coisas urgentes.
+
+------------------------------------------------------------------------
+
+sp_BlitzCache: Encontre as consultas que mais exigem recursos
+sp_BlitzCache analisa o cache do seu plano, onde o SQL Server monitora quais consultas foram executadas recentemente e quanto impacto elas tiveram no servidor.
+
+Por padrão, ele inclui dois conjuntos de resultados:
+
+O primeiro conjunto de resultados mostra suas 10 consultas que mais consomem recursos.
+O segundo conjunto de resultados explica o conteúdo da coluna Avisos, mas mostra apenas os avisos que foram produzidos no primeiro conjunto de resultados. (É como o glossário mais relevante de termos do plano de execução.)
+As colunas de saída incluem:
+
+Banco de dados - o contexto do banco de dados onde a consulta foi executada. Tenha em mente que se você qualificar completamente seus nomes de objeto, a mesma consulta pode ser executada de vários bancos de dados.
+Custo - o custo estimado da subárvore da consulta, o que Kendra Little chama de "Query Bucks".
+Texto da consulta - não copie/cole daqui - é apenas uma referência rápida. Uma fonte melhor para a consulta aparecerá mais tarde.
+Avisos - problemas que encontramos.
+Criado em - quando o plano apareceu no cache.
+Última execução - talvez a consulta seja executada apenas à noite.
+Plano de consulta - clique aqui e o plano gráfico será exibido.
+Parâmetros comuns do sp_BlitzCache
+O parâmetro @SortOrder permite que você escolha quais das 10 principais consultas deseja examinar:
+
+lê - leituras lógicas
+CPU - de total_worker_time em sys.dm_exec_query_stats
+execuções - quantas vezes a consulta foi executada desde a CreationDate
+xpm - execuções por minuto, derivadas de CreationDate e LastExecution
+compilações recentes - se você está procurando coisas que estão sendo muito recompiladas
+concessão de memória - se você estiver solucionando um problema de RESOURCE_SEMAPHORE e quiser encontrar consultas que estejam consumindo muita memória
+escreve - se você quiser encontrar aqueles processos ETL irritantes
+Você também pode usar average ou avg para muitas classificações, como @SortOrder = 'avg reads'
+all - classifica por todas as diferentes opções de ordem de classificação e retorna um único conjunto de resultados de hot messes. Isso é um pouco complicado porque:
+Encontramos as consultas @Top N por CPU, depois por leituras, gravações, duração, execuções, concessão de memória, vazamentos, etc. Se você quiser definir @Top > 10, também precisará definir @BringThePain = 1 para ter certeza de que entende que pode ser bem lento.
+À medida que trabalhamos em cada padrão, excluímos os resultados dos padrões anteriores. Então, por exemplo, obtemos os 10 principais por CPU e, então, quando vamos obter os 10 principais por leituras, excluímos consultas que já foram encontradas no top 10 por CPU. Como resultado, os 10 principais por leituras podem não ser realmente os 10 principais por leituras - porque alguns deles podem ter estado no top 10 por CPU.
+Para tornar as coisas ainda mais confusas, na coluna Pattern da saída, especificamos apenas o primeiro padrão que correspondeu, não todos os padrões que corresponderam. Seria legal se em algum momento no futuro, transformássemos isso em uma lista delimitada por vírgulas de padrões que uma consulta correspondeu, e então seríamos capazes de chegar a uma lista mais restrita de consultas principais. Por enquanto, porém, isso é meio anticientífico.
+hash de consulta - filtra apenas consultas que têm vários planos em cache (mesmo que todos ainda sejam o mesmo plano, apenas cópias diferentes armazenadas). Se você usar @SortOrder = 'hash de consulta', poderá especificar uma segunda ordem de classificação com uma vírgula, como 'hash de consulta, leituras' para encontrar apenas consultas com vários planos, classificadas pelas que fazem mais leituras. A segunda classificação padrão é CPU.
+Outros parâmetros comuns incluem:
+
+@Top = 10 - por padrão, você recebe 10 planos, mas pode pedir mais. Só saiba que quanto mais você recebe, mais lento fica.
+@ExportToExcel = 1 - ative esta opção e ela não retornará campos XML que impediriam você de copiar/colar os dados no Excel.
+@ExpertMode = 1 - ative isso e você terá mais colunas com mais dados. Mas não demora mais para rodar.
+@IgnoreSystemDBs = 0 - se você quiser mostrar consultas em master/model/msdb. Por padrão, nós as ocultamos. Além disso, oculta consultas de bancos de dados chamados dbadmin, dbmaintenance, e dbatools.
+@MinimumExecutionCount = 0 - em servidores como data warehouses, onde muitas consultas são executadas apenas algumas vezes, você pode definir um número de andar para exame.
+
+
+
+------------------------------------------------------------------------
+
+
+
+sp_BlitzFirst: Conselhos de desempenho em tempo real
+Quando emergências de desempenho acontecem, este deve ser o primeiro procedimento armazenado no kit que você deve executar.
+
+Ele pega uma amostra de um monte de DMVs (estatísticas de espera, contadores Perfmon, cache de plano), espera 5 segundos e então pega outra amostra. Ele examina as diferenças entre as amostras e então fornece uma lista priorizada de coisas que podem estar causando problemas de desempenho agora. Exemplos incluem:
+
+Dados ou arquivo de log crescendo (ou Deus nos livre, diminuindo)
+Backup ou restauração em execução
+Operação DBCC acontecendo
+Se nenhum problema for encontrado, ele também lhe dirá isso. Esse é um dos nossos recursos favoritos porque você pode fazer com que sua equipe de help desk execute sp_BlitzFirst e leia a saída para você pelo telefone. Se nenhum problema for encontrado, você pode continuar bebendo no bar. (Ha! Brincadeira, você ainda terá que fechar sua conta, mas pelo menos você se sentirá melhor terminando aquela bebida em vez de tentar ficar sóbrio.)
+
+Os parâmetros comuns do sp_BlitzFirst incluem:
+
+@Seconds = 5 por padrão. Você pode especificar amostras mais longas se quiser rastrear estatísticas durante um teste de carga ou demonstração, por exemplo.
+@ShowSleepingSPIDs = 0 por padrão. Quando definido como 1, mostra consultas de hibernação de longa duração que podem estar bloqueando outras.
+@ExpertMode = 0 por padrão. Quando definido como 1, ele chama sp_BlitzWho quando inicia (para mostrar quais consultas estão sendo executadas no momento), além de gerar conjuntos de resultados adicionais para estatísticas de espera, contadores Perfmon e estatísticas de arquivo durante a amostra, e então termina com uma execução final de sp_BlitzWho para mostrar o que estava sendo executado no final da amostra. Quando definido como 2, ele faz o mesmo que 1, mas pula as chamadas para sp_BlitzWho.
+Registrando sp_BlitzFirst em tabelas
+Você pode registrar dados de desempenho do sp_BlitzFirst em tabelas agendando uma tarefa do Agente para executar o sp_BlitzFirst a cada 15 minutos com estes parâmetros preenchidos:
+
+@OutputDatabaseName = normalmente 'DBAtools'
+@OutputSchemaName = 'dbo'
+@OutputTableName = 'BlitzFirst' - o conjunto de resultados do diagnóstico rápido vai aqui
+@OutputTableNameFileStats = 'BlitzFirst_FileStats'
+@OutputTableNamePerfmonStats = 'BlitzFirst_PerfmonStats'
+@OutputTableNameWaitStats = 'BlitzFirst_WaitStats'
+@OutputTableNameBlitzCache = 'BlitzCache'
+@OutputTableNameBlitzWho = 'BlitzQuem'
+Todos os parâmetros OutputTableName acima são opcionais: se você não quiser coletar todas as estatísticas, não precisa. Tenha em mente que os resultados do sp_BlitzCache ficarão grandes, rápido, porque cada plano de execução tem megabytes de tamanho.
+
+Atividades de ajuste de desempenho de registro
+Você também pode registrar suas próprias atividades, como ajuste de consultas, adição de índices ou alteração de definições de configuração. Para fazer isso, execute sp_BlitzFirst com estes parâmetros:
+
+@OutputDatabaseName = normalmente 'DBAtools'
+@OutputSchemaName = 'dbo'
+@OutputTableName = 'BlitzFirst' - o conjunto de resultados do diagnóstico rápido vai aqui
+@LogMessage = 'O que você quiser mostrar na sua ferramenta de monitoramento'
+Opcionalmente, você também pode passar:
+
+@LogMessagePriority = 1
+@LogMessageFindingsGroup = 'Mensagem registrada'
+@LogMessageFinding = 'Logged from sp_BlitzFirst' - você pode usar outros valores aqui para rastrear outras fontes de dados, como gatilhos DDL, trabalhos de agente, trabalhos ETL
+@LogMessageURL = ' https://OurHelpDeskSystem/ticket/?12345 ' - ou talvez um problema no Github ou um alerta do Pagerduty
+@LogMessageCheckDate = '2017/10/31 11:00' - caso você precise registrar uma mensagem de uma data/hora anterior, como se você tivesse esquecido de registrar a mensagem antes
+
+
+
+
+
+------------------------------------------------------------------------
+
+
+sp_BlitzIndex: Ajuste seus índices
+O SQL Server rastreia seus índices: quão grandes eles são, com que frequência eles mudam, se eles são usados ​​para tornar as consultas mais rápidas e quais índices você deve considerar adicionar. As colunas de resultados são bastante autoexplicativas.
+
+Por padrão, sp_BlitzIndex analisa os índices do banco de dados em que você está (seu contexto atual).
+
+Os parâmetros comuns incluem:
+
+@DatabaseName - se você quiser analisar um banco de dados específico
+@SchemaName, @TableName - se você passar estes, sp_BlitzIndex faz uma análise mais profunda de apenas uma tabela. Você obtém vários conjuntos de resultados descrevendo mais informações sobre os índices atuais da tabela, relacionamentos de chave estrangeira, índices ausentes e campos na tabela.
+@GetAllDatabases = 1 - mais lento, mas permite analisar todos os bancos de dados de uma vez, até 50. Se quiser mais de 50 bancos de dados, você também precisa passar @BringThePain = 1.
+@ThresholdMB = 250 - por padrão, analisamos apenas objetos com mais de 250 MB porque você está ocupado.
+@Mode = 0 (padrão) - retorna conselhos de alta prioridade (1-100) sobre os problemas de índice mais urgentes.
+@Mode = 4: Detalhes do diagnóstico - como @Mode 0, mas retorna ainda mais conselhos (prioridades 1-255) com coisas que você pode não conseguir consertar imediatamente e coisas sobre as quais queremos apenas avisá-lo.
+@Mode = 1: Resumir - número total de índices, espaço usado, etc. por banco de dados.
+@Mode = 2: Index Usage Details - um inventário dos seus índices existentes e suas estatísticas de uso. Ótimo para copiar/colar no Excel para fazer análises de fatias e dados. Este é o único modo que funciona com os parâmetros @Output: você pode exportar esses dados para uma tabela mensalmente se precisar voltar e verificar quais índices foram usados ​​ao longo do tempo.
+@Mode = 3: Missing Indexes - um inventário de índices que o SQL Server está sugerindo. Também é ótimo para copiar/colar no Excel para análise posterior.
+sp_BlitzIndex foca em tipos de índices mainstream. Outros tipos de índices têm quantidades variadas de suporte:
+
+Totalmente suportado: índices rowstore, índices columnstore, tabelas temporais.
+Índices Columnstore: totalmente suportados. Colunas de chave são mostradas como inclusões em vez de chaves, pois não estão em uma ordem específica.
+Tabelas de gráficos: sem suporte. Esses objetos aparecem nos resultados, mas não fazemos nada especial com eles, como dizer que são tabelas de gráficos.
+Índices espaciais: sem suporte. Nós chamamos isso de espacial, mas não fazemos nenhum tratamento especial para eles.
+Índices XML: não suportados. Esses objetos aparecem nos resultados, mas não incluímos as colunas ou tamanhos do índice.
+
+
+

@@ -1,0 +1,71 @@
+DELIMITER //
+
+CREATE PROCEDURE SearchTables(IN searchValue VARCHAR(100))
+BEGIN
+    DECLARE done INT DEFAULT 0;
+    DECLARE tableName VARCHAR(128);
+    DECLARE columnName VARCHAR(128);
+    DECLARE dataType VARCHAR(128);
+    DECLARE sqlQuery TEXT DEFAULT '';
+    DECLARE table_cursor CURSOR FOR
+        SELECT TABLE_NAME
+        FROM INFORMATION_SCHEMA.TABLES
+        WHERE TABLE_TYPE = 'BASE TABLE' AND TABLE_SCHEMA = DATABASE();
+    DECLARE column_cursor CURSOR FOR
+        SELECT COLUMN_NAME, DATA_TYPE
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_NAME = tableName AND TABLE_SCHEMA = DATABASE();
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1;
+
+    -- Cursor para iterar sobre todas as tabelas do banco de dados
+    OPEN table_cursor;
+    table_loop: LOOP
+        FETCH table_cursor INTO tableName;
+        IF done THEN
+            LEAVE table_loop;
+        END IF;
+
+        -- Resetar o manipulador de término para o cursor de colunas
+        SET done = 0;
+
+        -- Abrir cursor para colunas da tabela atual
+        OPEN column_cursor;
+        column_loop: LOOP
+            FETCH column_cursor INTO columnName, dataType;
+            IF done THEN
+                LEAVE column_loop;
+            END IF;
+
+            -- Verificar se o tipo de dados é compatível com a função LIKE
+            IF dataType IN ('varchar', 'nvarchar', 'char', 'nchar', 'text', 'tinytext', 'mediumtext', 'longtext') THEN
+                -- Construir a consulta SQL dinamicamente
+                SET sqlQuery = CONCAT(
+                    sqlQuery, 
+                    'SELECT ''', tableName, ''' AS TableName, ''', columnName, ''' AS ColumnName, `', columnName, '` AS ColumnValue FROM `', tableName, '` WHERE `', columnName, '` LIKE ''%', searchValue, '%'' UNION ALL '
+                );
+            END IF;
+        END LOOP column_loop;
+        CLOSE column_cursor;
+
+        -- Resetar o manipulador de término para o cursor de tabelas
+        SET done = 0;
+    END LOOP table_loop;
+    CLOSE table_cursor;
+
+    -- Remover o último 'UNION ALL'
+    IF LENGTH(sqlQuery) > 0 THEN
+        SET sqlQuery = LEFT(sqlQuery, LENGTH(sqlQuery) - 10);
+        -- Executar a consulta dinâmica
+        SET @finalSQL = sqlQuery;
+        PREPARE stmt FROM @finalSQL;
+        EXECUTE stmt;
+        DEALLOCATE PREPARE stmt;
+    ELSE
+        SELECT 'Nenhum dado encontrado que corresponda ao valor pesquisado.' AS Result;
+    END IF;
+END //
+
+DELIMITER ;
+
+-- Chamar o procedimento armazenado com o valor de pesquisa desejado
+CALL SearchTables('sua string');

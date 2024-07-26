@@ -1,0 +1,13 @@
+Utilizando essa sessão do XE, você poderá capturar praticamente qualquer erro ou exceção que ocorra no seu banco de dados, como por exemplo:
+– Erros de permissão em objetos
+– Erros de sintaxe
+– Objetos inexistentes
+– Erros de login
+– Erros de rede
+– Erros aritméticos e matemáticos
+– Warnings do tipo “The definition of object ‘xxx’ has changed since it was compiled.”
+– Ocorrência de deadlocks
+– Violação de constraints (Check, Foreign Key, Primary Key, Unique Key)
+
+--BLOG:
+https://dirceuresende.com/blog/sql-server-como-criar-um-monitoramento-de-erros-e-excecoes-no-seu-banco-de-dados-utilizando-extended-events-xe/

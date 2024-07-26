@@ -1,0 +1,11 @@
+select request.plan_handle,request.scheduler_id,request.cpu_time,  request.writes, request.reads, request.logical_reads, 
+request.session_id, sessions.host_name, sessions.program_name, sessions.login_name, 
+sessions.status, request.wait_type, request.last_wait_type, query_plan.query_plan, sql_text.text  from sys.dm_exec_requests AS request
+LEFT JOIN sys.dm_exec_sessions AS sessions
+ON request.session_id = sessions.session_id
+LEFT JOIN sys.dm_exec_connections AS connections
+ON request.session_id = connections.session_id
+OUTER APPLY sys.dm_exec_query_plan(request.plan_handle) AS query_plan
+OUTER APPLY sys.dm_exec_sql_text(request.sql_handle) AS sql_text
+WHERE sessions.is_user_process = 1
+AND request.session_id = 199
