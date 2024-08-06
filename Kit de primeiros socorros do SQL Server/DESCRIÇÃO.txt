@@ -1,3 +1,6 @@
+https://github.com/BrentOzarULTD/SQL-Server-First-Responder-Kit
+
+----
 Quando você quiser uma verificação geral de saúde, execute sp_Blitz .
 Para saber quais consultas estão usando mais recursos, execute sp_BlitzCache .
 Para analisar quais índices estão faltando ou deixando você lento, execute sp_BlitzIndex .
