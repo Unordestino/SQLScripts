@@ -1,0 +1,141 @@
+CREATE PROCEDURE [dbo].[EnviarBackupPorEmail]
+AS
+BEGIN
+
+IF OBJECT_ID('tempdb..#BackupDetails') IS NOT NULL
+    DROP TABLE #BackupDetails;
+
+SELECT	
+	ROW_NUMBER() OVER (ORDER BY backup_start_date ASC) AS ID,
+    database_name, 
+    name,
+    backup_start_date, 
+    DATEDIFF(mi, backup_start_date, backup_finish_date) AS [tempo (min)], 
+    position, 
+    server_name, 
+    recovery_model, 
+    ISNULL(logical_device_name, ' ') AS logical_device_name, 
+    device_type,  
+    type, 
+    CAST(compressed_backup_size / 1024 / 1024 AS NUMERIC(15, 2)) AS [Tamanho (MB)] 
+INTO #BackupDetails
+FROM msdb.dbo.backupset B 
+INNER JOIN msdb.dbo.backupmediafamily BF ON B.media_set_id = BF.media_set_id 
+WHERE backup_start_date >= DATEADD(hh, -6, GETDATE()) 
+  AND type IN ('D') 
+ORDER BY backup_start_date DESC;
+
+
+
+
+    -- Execute sua consulta e formate o resultado como HTML
+    
+
+	
+	DECLARE @ResultadoHTML NVARCHAR(MAX);
+    DECLARE @ResultadoTemp NVARCHAR(MAX);
+    DECLARE @Coluna1 NVARCHAR(255), @Coluna2 NVARCHAR(255), @Coluna3  NVARCHAR(255), @Coluna4  nvarchar(MAX)
+	, @Coluna5  NVARCHAR(255), @Coluna6  NVARCHAR(255), @Coluna7  NVARCHAR(255), @Coluna8  NVARCHAR(255);
+
+    SET @ResultadoHTML = N'<html> 
+	
+	<head>
+    <style type="text/css">
+        table { border: outset 2.25pt; }
+        thead { background: #C10A0A; }
+        th { color: #fff; padding: 10px; }
+        td { padding: 3.0pt 3.0pt 3.0pt 3.0pt; }
+    </style>
+	</head>
+	
+	<body>
+
+
+	<img src="https://www.hostweb.com.br/wp-content/uploads/elementor/thumbs/logo-hostweb-01-p42fabr8umczbaiaqfqnvmeyfpr6eebo9leatlo39i.png" title="logo-hostweb-01" alt="logo-hostweb-01">
+
+
+
+
+    <table border="1">
+	
+        <thead>
+            <tr>
+
+                <th>DATABASE_NAME</th>
+                <th>NAME</th>
+			    <th>BACKUP_DATE</th>
+				<th>TEMPO</th>
+				<th>SERVER_NAME</th>
+				<th>TAMANHO (MB)</th>
+            </tr>
+        </thead>
+		<tbody>';
+
+    -- Declare um cursor para iterar pelos resultados da consulta
+
+
+--SELECT database_name, name, backup_start_date, [tempo (min)], server_name, [Tamanho (MB)] FROM #BackupDetails order by backup_start_date;
+
+
+
+    SELECT top 1 @Coluna1 = database_name, 
+				 @Coluna2 = name, 
+				 @Coluna3 = backup_start_date , 
+				 @Coluna4 = [tempo (min)], 
+				 @Coluna5 = server_name, 
+				 @Coluna6 = [Tamanho (MB)]
+    FROM #BackupDetails order by backup_start_date;
+
+DECLARE @Contador INT = 1
+DECLARE @TotalRegistros INT
+
+-- Obtenha o total de registros na tabela temporária
+SET @TotalRegistros = (SELECT COUNT(*) FROM #BackupDetails)
+
+-- Inicie o loop WHILE
+WHILE @Contador <= @TotalRegistros
+BEGIN
+    -- Faça o processamento necessário com base nos valores na tabela temporária
+    DECLARE @Valor INT
+    SELECT @Valor = ID, @Coluna1 = backup_start_date , @Coluna2 = name, @Coluna3 = database_name, @Coluna4 = [tempo (min)],
+	@Coluna5 = server_name, @Coluna6 =  [Tamanho (MB)]  FROM #BackupDetails WHERE ID = @Contador
+
+	--SELECT database_name, name, backup_start_date, [tempo (min)], server_name, [Tamanho (MB)] FROM #BackupDetails order by backup_start_date;
+  -- Formatando cada linha como HTML
+	SET @ResultadoTemp = N' <tr>
+	<td>' + @Coluna3 + N'</td>
+	<td>' + @Coluna2 + N'</td>
+	<td>' + @Coluna1 + N'</td>
+	<td>' + @Coluna4 + N'</td>
+	<td>' + @Coluna5 + N'</td>
+	<td>' + @Coluna6 + N'</td>
+	</tr>';
+
+	set @ResultadoHTML += @ResultadoTemp
+
+	    -- Realize o processamento necessário com @Valor
+    -- Por exemplo, imprimir o valor
+    
+    -- Incrementar o contador
+    SET @Contador = @Contador + 1
+END
+
+   SET @ResultadoHTML = @ResultadoHTML + N'</tbody></table> 	<p>Relátorio de Backup do SQL Server, qualquer dúvida ficamos a disposição.</p>  </body></html>';
+
+   
+-- Envie o e-mail com o resultado formatado em HTML
+
+DECLARE @operator_email NVARCHAR(256);
+
+SELECT @operator_email = email_address
+FROM msdb.dbo.sysoperators
+WHERE name = 'HOSTWEB'
+
+
+EXEC msdb.dbo.sp_send_dbmail
+         @profile_name = 'HOSTWEB',
+         @recipients = @operator_email,
+         @subject = 'Relatório de Backup SQL Server',
+        @body = @ResultadoHTML,
+        @body_format = 'HTML';
+END

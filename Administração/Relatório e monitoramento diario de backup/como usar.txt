@@ -1,0 +1,2 @@
+PRIMEIRO crie a procedure que envia relatório em uma base de dados em especifica.
+SEGUNDO adicione a lógica do check em uma job para executar diariamente

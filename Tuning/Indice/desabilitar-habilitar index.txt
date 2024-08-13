@@ -1,0 +1,21 @@
+USE [NORTHWND]
+GO
+ALTER INDEX [PostalCode] ON [dbo].[Employees] DISABLE
+GO
+
+
+-----------------
+
+ALTER INDEX [PostalCode] 
+ON Employees
+REBUILD;
+
+---------------------
+
+/*
+Verificar indices desabilitados
+*/
+
+SELECT name, index_id, type_desc, is_disabled
+FROM sys.indexes
+WHERE object_id = OBJECT_ID('Employees');
