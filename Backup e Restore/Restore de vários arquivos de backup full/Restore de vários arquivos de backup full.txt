@@ -1,205 +1,133 @@
--- Habilitar xp_cmdshell
-EXEC sp_configure 'show advanced options', 1;
+-- Permitir que você modifique as configurações avançadas
+sp_configure 'show advanced options', 1;
+GO
 RECONFIGURE;
-EXEC sp_configure 'xp_cmdshell', 1;
+GO
+
+-- Habilitar o xp_cmdshell
+sp_configure 'xp_cmdshell', 1;
+GO
 RECONFIGURE;
+GO
 
--- Defina o diretório onde estão os arquivos .bak
-DECLARE @directory NVARCHAR(255) = N'E:\SQL-BACKUP\full';
+-- Tabela temporária para armazenar a lista de arquivos de backup
+DECLARE @FilesCmdshell TABLE (
+    outputCmd NVARCHAR(255)
+)
 
-IF OBJECT_ID('tempdb..#FileList') IS NOT NULL
-BEGIN
-    DROP TABLE #FileList
-END
+-- Variáveis para cursor e comandos
+DECLARE @FilesCmdshellCursor CURSOR
+DECLARE @FilesCmdshellOutputCmd NVARCHAR(255)
 
--- Tabela temporária para armazenar os resultados do xp_cmdshell
-CREATE TABLE #FileList (
-    FileName NVARCHAR(255)
-);
+-- Definir o caminho do diretório onde os arquivos .bak estão
+DECLARE @backup_path NVARCHAR(MAX) = 'D:\SQL-DEFAULT\SQL-BACKUP\FULL\AdventureWorks\'
+DECLARE @path_mdf NVARCHAR(MAX) = 'D:\SQL-DEFAULT\SQL-BACKUP\FULL\AdventureWorks\'  -- Novo caminho para os arquivos MDF
+DECLARE @path_ldf NVARCHAR(MAX) = 'D:\SQL-DEFAULT\SQL-BACKUP\FULL\AdventureWorks\'  -- Novo caminho para os arquivos LDF
+DECLARE @cmd_string VARCHAR(MAX) = 'dir /B ' + @backup_path + '*.bak';
+DECLARE @prefix VARCHAR(MAX) = 'HB_' --Caso o restore de cada banco precise de um prefixo
+DECLARE @sql NVARCHAR(MAX);
 
--- Executar xp_cmdshell para listar arquivos .bak e armazenar na tabela temporária
-INSERT INTO #FileList (FileName)
-EXEC xp_cmdshell 'dir E:\SQL-BACKUP\full\*.bak /b';
 
--- Remover entradas nulas ou inválidas
-DELETE FROM #FileList WHERE FileName IS NULL OR FileName = 'File Not Found';
+SET @sql = 'EXEC master.sys.xp_cmdshell ''' + @cmd_string + '''';
+-- Inserir a lista de arquivos .bak do diretório na tabela temporária
+-- Filtrando apenas as linhas não-nulas e ignorando entradas inválidas
+INSERT INTO @FilesCmdshell (outputCmd) 
+EXEC sp_executesql @sql;
 
-IF OBJECT_ID('tempdb..#FileListOnly') IS NOT NULL
-BEGIN
-    DROP TABLE #FileListOnly
-END
+-- Inicializar o cursor para percorrer os arquivos de backup
+SET @FilesCmdshellCursor = CURSOR FOR
+SELECT outputCmd FROM @FilesCmdshell
+WHERE outputCmd IS NOT NULL AND LEN(outputCmd) > 0  -- Evitar valores nulos ou vazios
 
--- Tabela temporária para armazenar informações de FILELISTONLY
-CREATE TABLE #FileListOnly (
-    LogicalName NVARCHAR(128),
-    PhysicalName NVARCHAR(260),
-    Type CHAR(1),
-    FileGroupName NVARCHAR(128),
-    Size NUMERIC(20, 0),
-    MaxSize NUMERIC(20, 0),
-    FileID BIGINT,
-    CreateLSN NUMERIC(25, 0),
-    DropLSN NUMERIC(25, 0),
-    UniqueID UNIQUEIDENTIFIER,
-    ReadOnlyLSN NUMERIC(25, 0),
-    ReadWriteLSN NUMERIC(25, 0),
-    BackupSizeInBytes BIGINT,
-    SourceBlockSize INT,
-    FileGroupID INT,
-    LogGroupGUID UNIQUEIDENTIFIER,
-    DifferentialBaseLSN NUMERIC(25,0),
-    DifferentialBaseGUID UNIQUEIDENTIFIER,
-    IsReadOnly BIT,
-    IsPresent BIT,
-    TDEThumbprint VARBINARY(32),
-    SnapshotUrl NVARCHAR(128)
-);
+OPEN @FilesCmdshellCursor
+FETCH NEXT FROM @FilesCmdshellCursor INTO @FilesCmdshellOutputCmd
 
-IF OBJECT_ID('tempdb..#HeaderOnly') IS NOT NULL
-BEGIN
-    DROP TABLE #HeaderOnly
-END
-
--- Tabela temporária para armazenar informações de HEADERONLY
-CREATE TABLE #HeaderOnly (
-    BackupName NVARCHAR(128),
-    BackupDescription NVARCHAR(255),
-    BackupType INT,
-    ExpirationDate DATETIME,
-    Compressed BIT,
-    Position INT,
-    DeviceType INT,
-    UserName NVARCHAR(128),
-    ServerName NVARCHAR(128),
-    DatabaseName NVARCHAR(128),
-    DatabaseVersion INT,
-    DatabaseCreationDate DATETIME,
-    BackupSize NUMERIC(20, 0),
-    FirstLSN NUMERIC(25, 0),
-    LastLSN NUMERIC(25, 0),
-    CheckpointLSN NUMERIC(25, 0),
-    DatabaseBackupLSN NUMERIC(25, 0),
-    BackupStartDate DATETIME,
-    BackupFinishDate DATETIME,
-    SortOrder INT,
-    CodePage INT,
-    UnicodeLocaleId INT,
-    UnicodeComparisonStyle INT,
-    CompatibilityLevel INT,
-    SoftwareVendorId INT,
-    SoftwareVersionMajor INT,
-    SoftwareVersionMinor INT,
-    SoftwareVersionBuild INT,
-    MachineName NVARCHAR(128),
-    Flags INT,
-    BindingID UNIQUEIDENTIFIER,
-    RecoveryForkID UNIQUEIDENTIFIER,
-    Collation NVARCHAR(128),
-    FamilyGUID UNIQUEIDENTIFIER,
-    HasBulkLoggedData BIT,
-    IsSnapshot BIT,
-    IsReadOnly BIT,
-    IsSingleUser BIT,
-    HasBackupChecksums BIT,
-    IsDamaged BIT,
-    BeginsLogChain BIT,
-    HasIncompleteMetaData BIT,
-    IsForceOffline BIT,
-    IsCopyOnly BIT,
-    FirstRecoveryForkID UNIQUEIDENTIFIER,
-    ForkPointLSN NUMERIC(25, 0),
-    RecoveryModel NVARCHAR(60),
-    DifferentialBaseLSN NUMERIC(25, 0),
-    DifferentialBaseGUID UNIQUEIDENTIFIER,
-    BackupTypeDescription NVARCHAR(60),
-    BackupSetGUID UNIQUEIDENTIFIER,
-    CompressedBackupSize BIGINT,
-    Containment NVARCHAR(60),
-    KeyAlgorithm NVARCHAR(32),
-    EncryptorThumbprint VARBINARY(20),
-    EncryptorType NVARCHAR(32)
-);
-
-DECLARE @fileName NVARCHAR(255);
-DECLARE @backupFile NVARCHAR(255);
-DECLARE @logicalData NVARCHAR(128);
-DECLARE @logicalLog NVARCHAR(128);
-DECLARE @databaseName NVARCHAR(128);
-DECLARE @restoreCommand NVARCHAR(MAX);
-DECLARE @newname NVARCHAR(MAX);
-DECLARE @newnamelog NVARCHAR(MAX);
-
-SET @restoreCommand = '';
-
-DECLARE fileCursor CURSOR FOR 
-SELECT FileName 
-FROM #FileList;
-
-OPEN fileCursor;
-FETCH NEXT FROM fileCursor INTO @fileName;
-
+-- Loop pelos arquivos de backup
 WHILE @@FETCH_STATUS = 0
 BEGIN
-    SET @backupFile = @directory + '\' + @fileName;
+    -- Verificar e limpar a tabela temporária antes de criar a nova
+    IF OBJECT_ID('tempdb..#filelist') IS NOT NULL
+        DROP TABLE #filelist
 
-    -- Obter informações de HEADERONLY
-    TRUNCATE TABLE #HeaderOnly;
-    INSERT INTO #HeaderOnly
-    EXEC ('RESTORE HEADERONLY FROM DISK = ''' + @backupFile + '''');
+    -- Criar tabela temporária para armazenar a lista de arquivos do backup antes da declaração do cursor
+    CREATE TABLE #filelist (
+        LogicalName NVARCHAR(128),
+        PhysicalName NVARCHAR(260),
+        Type CHAR(1),
+        FileGroupName NVARCHAR(128),
+        Size NUMERIC(20, 0),
+        MaxSize NUMERIC(20, 0),
+        FileID BIGINT,
+        CreateLSN NUMERIC(25, 0),
+        DropLSN NUMERIC(25, 0),
+        UniqueID UNIQUEIDENTIFIER,
+        ReadOnlyLSN NUMERIC(25, 0),
+        ReadWriteLSN NUMERIC(25, 0),
+        BackupSizeInBytes BIGINT,
+        SourceBlockSize INT,
+        FileGroupID INT,
+        LogGroupGUID UNIQUEIDENTIFIER,
+        DifferentialBaseLSN NUMERIC(25,0),
+        DifferentialBaseGUID UNIQUEIDENTIFIER,
+        IsReadOnly BIT,
+        IsPresent BIT,
+        TDEThumbprint VARBINARY(32),
+        SnapshotUrl NVARCHAR(128)
+    )
 
-    -- Obter o nome do banco de dados original
-    SELECT @databaseName = DatabaseName
-    FROM #HeaderOnly;
+    -- Verificar se o arquivo de backup existe
+    DECLARE @backup_file NVARCHAR(MAX) = @backup_path + @FilesCmdshellOutputCmd
+    IF EXISTS (SELECT 1 FROM @FilesCmdshell WHERE outputCmd = @FilesCmdshellOutputCmd)
+    BEGIN
+        -- Inserir os detalhes dos arquivos do backup na tabela temporária
+        BEGIN TRY
+            INSERT INTO #filelist
+            EXEC('RESTORE FILELISTONLY FROM DISK = ''' + @backup_file + '''')
 
-    -- Obter informações de FILELISTONLY
-    TRUNCATE TABLE #FileListOnly;
-    INSERT INTO #FileListOnly
-    EXEC ('RESTORE FILELISTONLY FROM DISK = ''' + @backupFile + '''');
+            -- Construir o comando de RESTORE DATABASE com base no backup atual
+            DECLARE @cmd NVARCHAR(MAX) = 'RESTORE DATABASE [' + @prefix + SUBSTRING(@FilesCmdshellOutputCmd, 0, CHARINDEX('_', @FilesCmdshellOutputCmd)) + '] FROM DISK = N''' + @backup_file + ''' WITH FILE = 1, NOUNLOAD, STATS = 10'
 
-    -- Obter nomes lógicos dos arquivos de dados e log
-    SELECT @logicalData = LogicalName 
-    FROM #FileListOnly 
-    WHERE [Type] = 'D';
+            -- Adicionar movimentação de arquivos (MOVE) usando a PhysicalName
+            DECLARE @fileName NVARCHAR(MAX), @physicalName NVARCHAR(MAX), @newPath NVARCHAR(MAX)
+            DECLARE fileCursor CURSOR FOR
+            SELECT LogicalName, PhysicalName, 
+                   CASE 
+                       WHEN Type = 'D' THEN @path_mdf + REVERSE(LEFT(REVERSE(PhysicalName), CHARINDEX('\', REVERSE(PhysicalName)) - 1)) -- Extrai o nome do arquivo MDF a partir de PhysicalName
+                       WHEN Type = 'L' THEN @path_ldf + REVERSE(LEFT(REVERSE(PhysicalName), CHARINDEX('\', REVERSE(PhysicalName)) - 1)) -- Extrai o nome do arquivo LDF a partir de PhysicalName
+                   END AS NewPath
+            FROM #filelist
 
-    SELECT @logicalLog = LogicalName 
-    FROM #FileListOnly 
-    WHERE [Type] = 'L';
+            -- Abrir o cursor
+            OPEN fileCursor
+            FETCH NEXT FROM fileCursor INTO @fileName, @physicalName, @newPath
 
-    -- Obter nomes físicos dos arquivos de dados e log e extrair a parte após a última barra invertida
-    SELECT @newname = REVERSE(SUBSTRING(REVERSE(PhysicalName), 1, CHARINDEX('\', REVERSE(PhysicalName)) - 1))
-    FROM #FileListOnly 
-    WHERE [Type] = 'D';
+            -- Loop para adicionar os movimentos dos arquivos no comando
+            WHILE @@FETCH_STATUS = 0
+            BEGIN
+                SET @cmd = @cmd + ', MOVE ''' + @fileName + ''' TO ''' + @newPath + ''''
+                FETCH NEXT FROM fileCursor INTO @fileName, @physicalName, @newPath
+            END
 
-    SELECT @newnamelog = REVERSE(SUBSTRING(REVERSE(PhysicalName), 1, CHARINDEX('\', REVERSE(PhysicalName)) - 1))
-    FROM #FileListOnly 
-    WHERE [Type] = 'L';
+            -- Fechar e desalocar o cursor
+            CLOSE fileCursor
+            DEALLOCATE fileCursor
 
-    -- Gerar comando de RESTORE
-    SET @restoreCommand = @restoreCommand + '
-RESTORE DATABASE [' + @databaseName + '] 
-FROM DISK = ''' + @backupFile + ''' 
-WITH FILE = 1, 
-MOVE ''' + @logicalData + ''' TO ''D:\SQL-DATA\' + @newname + ''',
-MOVE ''' + @logicalLog + ''' TO ''D:\SQL-LOG\' + @newnamelog +''',
-NOUNLOAD, STATS = 10;
-';
+            -- Imprimir o comando de RESTORE para revisão
+            PRINT @cmd
 
-    FETCH NEXT FROM fileCursor INTO @fileName;
+            -- Opcional: Para executar o RESTORE, descomente a linha abaixo
+            -- EXEC sp_executesql @cmd
+
+        END TRY
+        BEGIN CATCH
+            PRINT 'Erro ao processar o arquivo de backup: ' + @FilesCmdshellOutputCmd
+        END CATCH
+    END
+
+    -- Próximo arquivo no cursor
+    FETCH NEXT FROM @FilesCmdshellCursor INTO @FilesCmdshellOutputCmd
 END
 
-CLOSE fileCursor;
-DEALLOCATE fileCursor;
-
--- Exibir os comandos gerados
-PRINT @restoreCommand;
-
--- Limpar
-DROP TABLE #FileList;
-DROP TABLE #FileListOnly;
-DROP TABLE #HeaderOnly;
-
--- Desabilitar xp_cmdshell por segurança
-EXEC sp_configure 'xp_cmdshell', 0;
-RECONFIGURE;
-EXEC sp_configure 'show advanced options', 0;
-RECONFIGURE;
+-- Fechar e desalocar o cursor
+CLOSE @FilesCmdshellCursor
+DEALLOCATE @FilesCmdshellCursor

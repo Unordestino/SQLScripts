@@ -1,9 +1,11 @@
 --verificando tamanhos de arquivos de dados e log
 
 
-select DB_NAME(dbid)bd, 
-       CONVERT(VARCHAR, cast(cast(size*8 as decimal(10,2))/1024. as decimal(10,3))) + ' MB' AS Tamanho, 
-	   STR (size * 8, 15, 0) + ' KB' tamanho_str, 
-	   name,  
-	   filename 
-	   from sysaltfiles order by tamanho_str desc
+SELECT 
+    DB_NAME(dbid) AS bd, 
+    CONVERT(VARCHAR, CAST(CAST(CAST(size AS BIGINT) * 8 AS DECIMAL(19, 4)) / 1024.0 AS DECIMAL(19, 4))) + ' MB' AS Tamanho, 
+    STR(CAST(size AS BIGINT) * 8, 15, 0) + ' KB' AS tamanho_str, 
+    name,  
+    filename 
+FROM sysaltfiles 
+ORDER BY CAST(size AS BIGINT) * 8 DESC;

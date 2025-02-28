@@ -1,0 +1,27 @@
+-- Processo(s) Raiz
+SELECT getdate() as DataHora, spid as SPID, 'RAIZ' as Status, waittime/1000 as TempoEspera_Seg, blocked as SPID_Blocking,
+db_name(sp.dbid) Banco,cast(rtrim(isnull(hostname,'N/A')) as varchar(50)) Computador,
+case when sp.nt_domain is null or sp.nt_domain = '' then 'N/A' else rtrim(sp.nt_domain) + '/' + nt_username end as UsuarioWindows, 
+cast(rtrim(loginame) as varchar(50)) as LoginSQL, s.program_name as Aplicacao, 
+s.client_interface_name as AppInterface,
+open_tran as QtdTransacoes, cmd as TipoComando, last_batch as UltimoTSQL,qt.text as InstrucaoTSQL
+
+FROM sys.sysprocesses sp 
+LEFT JOIN sys.dm_exec_sessions s ON s.session_id = sp.spid
+OUTER APPLY sys.dm_exec_sql_text(sp.sql_handle) AS qt
+WHERE spid in (SELECT distinct blocked FROM sys.sysprocesses where blocked > 0) AND blocked = 0
+
+UNION 
+
+-- Processo(s) que estão em Blocking
+SELECT getdate(), spid as SPID, 'BLOCK' as Status, waittime/1000 as TempoEspera_Seg, blocked as SPID_Blocking,
+db_name(sp.dbid) Banco,cast(rtrim(isnull(hostname,'N/A')) as varchar(50)) Computador,
+case when sp.nt_domain is null or sp.nt_domain = '' then 'N/A' else rtrim(sp.nt_domain) + '/' + nt_username end as UsuarioWindows, 
+cast(rtrim(loginame) as varchar(50)) as LoginSQL, s.program_name as Aplicacao, 
+s.client_interface_name as AppInterface,
+open_tran as QtdTransacoes, cmd as TipoComando, last_batch as UltimoTSQL,qt.text as InstrucaoTSQL
+
+FROM sys.sysprocesses sp 
+LEFT JOIN sys.dm_exec_sessions s ON s.session_id = sp.spid
+OUTER APPLY sys.dm_exec_sql_text(sp.sql_handle) AS qt
+WHERE  spid > 50 and blocked > 0

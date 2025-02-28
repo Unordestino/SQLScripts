@@ -1,0 +1,9 @@
+Task Scheduler Library > Microsoft > Windows > PLA
+
+C:\windows\system32\rundll32.exe
+
+C:\windows\system32\pla.dll,PlaHost "DBA Discos" "$(Arg0)"
+C:\windows\system32\pla.dll,PlaHost "DBA Rede" "$(Arg0)"
+C:\windows\system32\pla.dll,PlaHost "DBA SQL" "$(Arg0)"
+C:\windows\system32\pla.dll,PlaHost "DBA Windows" "$(Arg0)"
+

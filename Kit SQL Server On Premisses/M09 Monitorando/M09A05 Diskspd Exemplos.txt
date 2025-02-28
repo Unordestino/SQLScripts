@@ -1,0 +1,11 @@
+- Ideal para SQL Server OLTP volume com arq. de dados
+diskspd.exe –b8k –d180 -o32 -h -L –t3 -W -w25 -c10G C:\_HandsOn_AdmSQL\_Diskspd\teste.dat > C:\_HandsOn_AdmSQL\_Diskspd\Resultado.txt
+
+- Ideal para SQL Server volume com arq. de log
+diskspd.exe –b60k –d180 -o32 -h -L –t1 -W -w25 -c10G C:\_HandsOn_AdmSQL\_Diskspd\teste.dat > C:\_HandsOn_AdmSQL\_Diskspd\Resultado.txt
+
+- Ideal para SQL Server DW avaliando Carga de Dados
+diskspd.exe –b8k –d180 -o32 -h -L –t3 -W -w75 -c10G C:\_HandsOn_AdmSQL\_Diskspd\teste.dat > C:\_HandsOn_AdmSQL\_Diskspd\Resultado.txt
+
+- Ideal para SQL Server DW avaliando apenas Consultas
+diskspd.exe –b8k –d180 -o32 -h -L –t3 -W -w0 -c10G C:\_HandsOn_AdmSQL\_Diskspd\teste.dat > C:\_HandsOn_AdmSQL\_Diskspd\Resultado.txt

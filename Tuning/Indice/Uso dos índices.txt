@@ -1,0 +1,11 @@
+SELECT OBJECT_NAME(a.[object_id]) as Tabela, b.[name] as Indice, b.[type_desc] as Tipo,
+case when b.is_primary_key = 1 then'Sim' else 'Não' end as PK,
+a.user_seeks as Seeks, a.user_scans as Scans, a.user_lookups as Lookups, a.user_updates as Updates,
+a.user_seeks + a.user_scans + a.user_lookups as TotalOperacoes
+
+FROM sys.dm_db_index_usage_stats a
+JOIN sys.indexes b on a.[object_id] = b.[object_id] and a.index_id = b.index_id
+WHERE OBJECTPROPERTY(a.[object_id],'IsUserTable') = 1
+and b.[name] is not null
+--and b.[type_desc] = 'NONCLUSTERED'
+ORDER BY TotalOperacoes

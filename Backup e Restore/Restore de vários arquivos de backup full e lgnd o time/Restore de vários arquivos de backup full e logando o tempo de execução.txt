@@ -1,0 +1,248 @@
+-- Criar a tabela temporária para armazenar os resultados do comando RESTORE HEADERONLY
+IF OBJECT_ID('tempdb..#RestoreHeader') IS NOT NULL
+    DROP TABLE #RestoreHeader;
+
+CREATE TABLE #RestoreHeader (
+    BackupName NVARCHAR(128),
+    BackupDescription NVARCHAR(255),
+    BackupType SMALLINT,
+    ExpirationDate DATETIME,
+    Compressed BIT,
+    Position SMALLINT,
+    DeviceType TINYINT,
+    UserName NVARCHAR(128),
+    ServerName NVARCHAR(128),
+    DatabaseName NVARCHAR(128),
+    DatabaseVersion INT,
+    DatabaseCreationDate DATETIME,
+    BackupSize NUMERIC(20, 0),
+    FirstLSN NUMERIC(25, 0),
+    LastLSN NUMERIC(25, 0),
+    CheckpointLSN NUMERIC(25, 0),
+    DatabaseBackupLSN NUMERIC(25, 0),
+    BackupStartDate DATETIME,
+    BackupFinishDate DATETIME,
+    SortOrder SMALLINT,
+    CodePage SMALLINT,
+    UnicodeLocaleId INT,
+    UnicodeComparisonStyle INT,
+    CompatibilityLevel TINYINT,
+    SoftwareVendorId INT,
+    SoftwareVersionMajor INT,
+    SoftwareVersionMinor INT,
+    SoftwareVersionBuild INT,
+    MachineName NVARCHAR(128),
+    Flags INT,
+    BindingID UNIQUEIDENTIFIER,
+    RecoveryForkID UNIQUEIDENTIFIER,
+    Collation NVARCHAR(128),
+    FamilyGUID UNIQUEIDENTIFIER,
+    HasBulkLoggedData BIT,
+    IsSnapshot BIT,
+    IsReadOnly BIT,
+    IsSingleUser BIT,
+    HasBackupChecksums BIT,
+    IsDamaged BIT,
+    BeginsLogChain BIT,
+    HasIncompleteMetaData BIT,
+    IsForceOffline BIT,
+    IsCopyOnly BIT,
+    FirstRecoveryForkID UNIQUEIDENTIFIER,
+    ForkPointLSN NUMERIC(25, 0),
+    RecoveryModel NVARCHAR(60),
+    DifferentialBaseLSN NUMERIC(25, 0),
+    DifferentialBaseGUID UNIQUEIDENTIFIER,
+    BackupTypeDescription NVARCHAR(60),
+    BackupSetGUID UNIQUEIDENTIFIER,
+    CompressedBackupSize BIGINT,
+    Containment TINYINT,
+    KeyAlgorithm NVARCHAR(32),
+    EncryptorThumbprint VARBINARY(20),
+    EncryptorType NVARCHAR(32),
+    LastValidRestoreTime DATETIME,
+    TimeZone NVARCHAR(32),
+    CompressionAlgorithm NVARCHAR(32)
+);
+
+-- Tabela temporária para armazenar os resultados do comando RESTORE FILELISTONLY
+IF OBJECT_ID('tempdb..#FileList') IS NOT NULL
+    DROP TABLE #FileList;
+
+CREATE TABLE #FileList (
+    LogicalName NVARCHAR(128),
+    PhysicalName NVARCHAR(260),
+    Type CHAR(1),
+    FileGroupName NVARCHAR(128),
+    Size NUMERIC(20, 0),
+    MaxSize NUMERIC(20, 0),
+    FileID BIGINT,
+    CreateLSN NUMERIC(25, 0),
+    DropLSN NUMERIC(25, 0),
+    UniqueID UNIQUEIDENTIFIER,
+    ReadOnlyLSN NUMERIC(25, 0),
+    ReadWriteLSN NUMERIC(25, 0),
+    BackupSizeInBytes BIGINT,
+    SourceBlockSize INT,
+    FileGroupID INT,
+    LogGroupGUID UNIQUEIDENTIFIER,
+    DifferentialBaseLSN NUMERIC(25, 0),
+    DifferentialBaseGUID UNIQUEIDENTIFIER,
+    IsReadOnly BIT,
+    IsPresent BIT,
+    TDEThumbprint VARBINARY(32),
+    SnapshotUrl NVARCHAR(128)
+);
+
+-- Garantir que a tabela de logs exista
+IF OBJECT_ID('Traces..RestoreLog') IS NULL
+BEGIN
+    CREATE TABLE Traces..RestoreLog (
+        ID INT IDENTITY(1,1) PRIMARY KEY,
+        DatabaseName NVARCHAR(100),
+        StartTime DATETIME,
+        EndTime DATETIME,
+        DurationSeconds INT,
+        Error NVARCHAR(4000)
+    );
+END;
+
+DELETE FROM Traces..RestoreLog
+
+-- Definir o caminho da pasta de backups
+DECLARE @BackupPath NVARCHAR(MAX) = 'D:\SQL22\BACKUP\COPY\';
+DECLARE @RestorePathMDF NVARCHAR(MAX) = 'D:\SQL22\BACKUP\Rest\';
+DECLARE @RestorePathLDF NVARCHAR(MAX) = 'D:\SQL22\BACKUP\Rest\';
+
+-- Variáveis para manipulação dos arquivos de backup
+DECLARE @FileName NVARCHAR(255);
+DECLARE @Cmd NVARCHAR(MAX);
+DECLARE @DatabaseName NVARCHAR(128);
+DECLARE @LogicalName NVARCHAR(128);
+DECLARE @NewPhysicalName NVARCHAR(260);
+DECLARE @StartTime DATETIME, @EndTime DATETIME;
+DECLARE @Error NVARCHAR(4000);
+DECLARE @cmd_string VARCHAR(MAX) = 'dir /B ' + @BackupPath + '*.bak';
+DECLARE @prefix VARCHAR(MAX) = 'HB_' --Caso o restore de cada banco precise de um prefixo
+DECLARE @sql NVARCHAR(MAX);
+
+/*-- Obter a lista de arquivos .bak da pasta
+DECLARE @FilesCmdshell TABLE (FileName NVARCHAR(255));
+INSERT INTO @FilesCmdshell (FileName)
+EXEC xp_cmdshell 'dir /B D:\SQL22\BACKUP\COPY\*.bak';
+*/
+SET @sql = 'EXEC master.sys.xp_cmdshell ''' + @cmd_string + '''';
+-- Inserir a lista de arquivos .bak do diretório na tabela temporária
+-- Filtrando apenas as linhas não-nulas e ignorando entradas inválidas
+DECLARE @FilesCmdshell TABLE (FileName NVARCHAR(255));
+INSERT INTO @FilesCmdshell (FileName) 
+EXEC sp_executesql @sql;
+
+-- Cursor para percorrer os arquivos de backup
+DECLARE FileCursor CURSOR FOR
+SELECT FileName FROM @FilesCmdshell WHERE FileName IS NOT NULL;
+
+OPEN FileCursor;
+FETCH NEXT FROM FileCursor INTO @FileName;
+
+-- Loop para processar cada arquivo de backup
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    -- Limpar a tabela temporária #RestoreHeader antes de inserir novos dados
+    DELETE FROM #RestoreHeader;
+
+    -- Gerar o comando RESTORE HEADERONLY para obter informações do backup
+    SET @Cmd = 'RESTORE HEADERONLY FROM DISK = ''' + @BackupPath + @FileName + '''';
+    INSERT INTO #RestoreHeader
+    EXEC sp_executesql @Cmd;
+
+    -- Obter o nome do banco de dados a partir do cabeçalho
+    SELECT TOP 1 @DatabaseName = DatabaseName
+    FROM #RestoreHeader
+    ORDER BY BackupStartDate DESC;
+
+    -- Garantir que o nome do banco foi obtido corretamente
+    IF @DatabaseName IS NOT NULL
+    BEGIN
+        PRINT 'Processando banco de dados: ' + @DatabaseName;
+
+        -- Obter a lista de arquivos do backup
+        DELETE FROM #FileList; -- Limpar dados anteriores
+        SET @Cmd = 'RESTORE FILELISTONLY FROM DISK = ''' + @BackupPath + @FileName + '''';
+        INSERT INTO #FileList
+        EXEC sp_executesql @Cmd;
+
+        -- Construir o comando RESTORE DATABASE
+        SET @Cmd = 'RESTORE DATABASE ['  + @prefix + @DatabaseName + '] FROM DISK = ''' + @BackupPath + @FileName + ''' WITH FILE = 1, ';
+
+        -- Adicionar os movimentos dos arquivos para novos caminhos
+        DECLARE FileListCursor CURSOR FOR
+        SELECT LogicalName,
+               CASE 
+                   WHEN Type = 'D' THEN @RestorePathMDF + @DatabaseName + '.mdf'
+                   WHEN Type = 'L' THEN @RestorePathLDF + @DatabaseName + '.ldf'
+               END AS NewPhysicalName
+        FROM #FileList;
+
+        OPEN FileListCursor;
+        FETCH NEXT FROM FileListCursor INTO @LogicalName, @NewPhysicalName;
+
+        WHILE @@FETCH_STATUS = 0
+        BEGIN
+            SET @Cmd = @Cmd + 'MOVE ''' + @LogicalName + ''' TO ''' + @NewPhysicalName + ''', ';
+            FETCH NEXT FROM FileListCursor INTO @LogicalName, @NewPhysicalName;
+        END;
+
+        CLOSE FileListCursor;
+        DEALLOCATE FileListCursor;
+		
+        -- Remover a última vírgula extra
+        SET @Cmd = LEFT(@Cmd, LEN(@Cmd) - 2) + ''', NOUNLOAD, STATS = 10, RECOVERY';
+	SELECT @Cmd
+        -- Registrar o início da restauração
+        SET @StartTime = GETDATE();
+
+        -- Executar o comando de restauração
+        BEGIN TRY
+            EXEC sp_executesql @Cmd;
+
+            -- Registrar o fim e calcular a duração
+            SET @EndTime = GETDATE();
+			SET @Error = 'OK'; -- Definir como "OK" em casos de sucesso
+
+            -- Inserir log de sucesso
+            INSERT INTO Traces..RestoreLog (DatabaseName, StartTime, EndTime, DurationSeconds, Error)
+            VALUES (@DatabaseName, @StartTime, @EndTime, DATEDIFF(SECOND, @StartTime, @EndTime), @Error);
+
+            PRINT 'Restauração concluída para ' + @DatabaseName;
+        END TRY
+        BEGIN CATCH
+            -- Registrar o erro
+            SET @EndTime = GETDATE();
+            SET @Error = ERROR_MESSAGE();
+
+            INSERT INTO Traces..RestoreLog (DatabaseName, StartTime, EndTime, DurationSeconds, Error)
+            VALUES (@DatabaseName, @StartTime, @EndTime, DATEDIFF(SECOND, @StartTime, @EndTime), @Error);
+
+            PRINT 'Erro ao restaurar o banco de dados ' + @DatabaseName + ': ' + @Error;
+        END CATCH;
+    END
+    ELSE
+    BEGIN
+        PRINT 'Erro: Não foi possível obter o nome do banco de dados para o arquivo: ' + @FileName;
+    END;
+
+    -- Próximo arquivo no cursor
+    FETCH NEXT FROM FileCursor INTO @FileName;
+END;
+
+-- Fechar e desalocar o cursor
+CLOSE FileCursor;
+DEALLOCATE FileCursor;
+
+-- Limpar tabelas temporárias após o uso
+DROP TABLE #RestoreHeader;
+DROP TABLE #FileList;
+
+/*SELECT * FROM Traces..RestoreLog
+order by StartTime DESC
+*/

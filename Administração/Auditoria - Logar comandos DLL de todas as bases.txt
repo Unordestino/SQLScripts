@@ -1,0 +1,39 @@
+--1. Criar a tabela de log para armazenar as informações:
+CREATE TABLE Log_DDL_Changes
+(
+    LogID INT IDENTITY(1,1) PRIMARY KEY,
+    Evento NVARCHAR(100),
+    DataHora DATETIME DEFAULT GETDATE(),
+    Usuario NVARCHAR(100),
+    Comando NVARCHAR(MAX),
+    BancoDados NVARCHAR(100),
+    Objeto NVARCHAR(100)
+);
+
+
+--Criar um trigger de DDL para capturar eventos em todos os bancos de dados:
+
+use master
+go
+
+CREATE TRIGGER ddl_audit_trigger
+ON ALL SERVER
+FOR CREATE_TABLE, ALTER_TABLE, DROP_TABLE, CREATE_PROCEDURE, ALTER_PROCEDURE, DROP_PROCEDURE,
+    CREATE_INDEX, ALTER_INDEX, DROP_INDEX
+--FOR DDL_DATABASE_LEVEL_EVENTS
+AS
+BEGIN
+    DECLARE @EventData XML;
+    SET @EventData = EVENTDATA();
+
+    INSERT INTO Log_DDL_Changes (Evento, DataHora, Usuario, Comando, BancoDados, Objeto)
+    VALUES
+    (
+        @EventData.value('(/EVENT_INSTANCE/EventType)[1]', 'NVARCHAR(100)'),
+        GETDATE(),
+        @EventData.value('(/EVENT_INSTANCE/LoginName)[1]', 'NVARCHAR(100)'),
+        @EventData.value('(/EVENT_INSTANCE/TSQLCommand)[1]', 'NVARCHAR(MAX)'),
+        @EventData.value('(/EVENT_INSTANCE/DatabaseName)[1]', 'NVARCHAR(100)'),
+        @EventData.value('(/EVENT_INSTANCE/ObjectName)[1]', 'NVARCHAR(100)')
+    );
+END;

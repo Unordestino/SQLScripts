@@ -1,0 +1,84 @@
+-- Verificar se a tabela RestoreLog contém valor
+IF (SELECT COUNT(*) FROM Traces..RestoreLog) >= 1 
+BEGIN
+    -- Declarar variáveis necessárias
+    DECLARE @ResultadoHTML NVARCHAR(MAX);
+    DECLARE @ResultadoTemp NVARCHAR(MAX);
+    DECLARE @Coluna1 NVARCHAR(255), @Coluna2 NVARCHAR(50), @Coluna3 NVARCHAR(50), @Coluna4 NVARCHAR(50), @Coluna5 NVARCHAR(255);
+
+    -- Início do HTML
+    SET @ResultadoHTML = N'<html>
+    <head>
+        <style type="text/css">
+            table { border: outset 2.25pt; }
+            thead { background: #C10A0A; }
+            th { color: #fff; padding: 10px; }
+            td { padding: 3.0pt 3.0pt 3.0pt 3.0pt; }
+        </style>
+    </head>
+    <body>
+        <img src="https://www.hostweb.com.br/wp-content/uploads/elementor/thumbs/logo-hostweb-01-p42fabr8umczbaiaqfqnvmeyfpr6eebo9leatlo39i.png" title="logo-hostweb-01" alt="logo-hostweb-01">
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>DatabaseName</th>
+                    <th>StartTime</th>
+                    <th>EndTime</th>
+                    <th>DurationSeconds</th>
+                    <th>Error</th>
+                </tr>
+            </thead>
+            <tbody>';
+
+    -- Obter o número total de registros
+    DECLARE @TotalRegistros INT;
+    SET @TotalRegistros = (SELECT COUNT(*) FROM Traces..RestoreLog);
+
+    -- Loop para processar cada registro
+    DECLARE @Contador INT = 1;
+    WHILE @Contador <= @TotalRegistros
+    BEGIN
+        -- Obter os dados do registro atual
+        SELECT @Coluna1 = DatabaseName,
+               @Coluna2 = CONVERT(NVARCHAR(50), StartTime, 120), -- Converte para string no formato ISO
+               @Coluna3 = CONVERT(NVARCHAR(50), EndTime, 120),   -- Converte para string no formato ISO
+               @Coluna4 = CONVERT(NVARCHAR(50), DurationSeconds),
+               @Coluna5 = Error
+        FROM Traces..RestoreLog
+        WHERE ID = @Contador;
+
+        -- Formatar a linha em HTML
+        SET @ResultadoTemp = N'<tr>
+            <td>' + ISNULL(@Coluna1, 'N/A') + N'</td>
+            <td>' + ISNULL(@Coluna2, 'N/A') + N'</td>
+            <td>' + ISNULL(@Coluna3, 'N/A') + N'</td>
+            <td>' + ISNULL(@Coluna4, 'N/A') + N'</td>
+            <td>' + ISNULL(@Coluna5, 'N/A') + N'</td>
+        </tr>';
+
+        -- Adicionar ao HTML final
+        SET @ResultadoHTML += @ResultadoTemp;
+
+        -- Incrementar o contador
+        SET @Contador = @Contador + 1;
+    END;
+
+    -- Finalizar o HTML
+    SET @ResultadoHTML += N'</tbody></table>
+    <p>Relatório de Backup e Restore do SQL Server, qualquer dúvida estamos à disposição.</p>
+    </body></html>';
+
+    -- Obter o e-mail do operador
+    DECLARE @operator_email NVARCHAR(256);
+    SELECT @operator_email = email_address
+    FROM msdb.dbo.sysoperators
+    WHERE name = 'Davi';
+
+    -- Enviar o e-mail com o resultado formatado
+    EXEC msdb.dbo.sp_send_dbmail
+         @profile_name = 'HOSTWEB',
+         @recipients = @operator_email,
+         @subject = 'Relatório de Backup e Restore SQL Server',
+         @body = @ResultadoHTML,
+         @body_format = 'HTML';
+END;

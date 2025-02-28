@@ -1,0 +1,16 @@
+# Definir o caminho para o sqlpackage.exe
+$sqlpackagePath = "C:\Program Files\Microsoft SQL Server\160\DAC\bin\sqlpackage.exe"
+
+# Parâmetros de importação
+$action = "/Action:Import"
+$serverName = "/tsn:localhost\SQL22" # Nome do servidor e instância
+$databaseName = "/tdn:NOVA35" # Nome do banco de dados de destino
+$username = "/tu:sa" # Usuário do SQL Server
+$password = "/tp:P@ssword" # Senha do SQL Server
+$sourceFile = "/sf:C:\t\NOVAJUS_FULL_8207197_20241203.bacpac" # Caminho para o arquivo .bacpac
+$commandTimeout = "/p:CommandTimeout=1800" # Tempo limite em segundos
+$tec = "/tec:false"
+
+# Executar o comando
+& $sqlpackagePath $action $serverName $databaseName $username $password $sourceFile $commandTimeout $tec
+ 

@@ -1,12 +1,18 @@
---USE SeuBancoDeDados;
-
 DECLARE @Script NVARCHAR(MAX);
 
 DECLARE script_cursor CURSOR FOR
-SELECT 'CREATE NONCLUSTERED INDEX ' + QUOTENAME(t.name) + ' ON ' + QUOTENAME(i.name) + CHAR(13) + CHAR(10) + 'GO'
+SELECT 
+    'IF EXISTS (SELECT 1 FROM sys.tables WHERE name = ' + QUOTENAME(t.name, '''') + ' AND schema_id = SCHEMA_ID(''dbo''))' + CHAR(13) + CHAR(10) + 
+    'AND NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = ' + QUOTENAME(i.name, '''') + ' AND object_id = OBJECT_ID(''dbo.' + t.name + '''))' + CHAR(13) + CHAR(10) +
+    'BEGIN' + CHAR(13) + CHAR(10) + 
+    '    CREATE NONCLUSTERED INDEX ' + QUOTENAME(i.name) + ' ON ' + QUOTENAME(t.name) + ' (' + QUOTENAME(c.name) + ');' + CHAR(13) + CHAR(10) + 
+    'END' + CHAR(13) + CHAR(10) + 
+    'GO'
 FROM sys.tables AS t
 INNER JOIN sys.indexes AS i ON t.object_id = i.object_id
-WHERE i.type_desc = 'NONCLUSTERED';  -- Filtro apenas para índices não clusterizados
+INNER JOIN sys.index_columns AS ic ON i.object_id = ic.object_id AND i.index_id = ic.index_id
+INNER JOIN sys.columns AS c ON t.object_id = c.object_id AND ic.column_id = c.column_id
+WHERE i.type_desc = 'NONCLUSTERED';  -- Apenas índices não clusterizados
 
 OPEN script_cursor;
 

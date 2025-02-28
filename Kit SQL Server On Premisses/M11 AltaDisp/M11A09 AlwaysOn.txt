@@ -1,0 +1,12 @@
+
+/************************
+ Executar no Power Shell
+*************************/
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+-- "Storage_Account_Name" = nome do Storage Account que irá hospedar o Witness
+-- "Storage_Account_Access_Key" = gerar a chave de acesso no Storage Account
+Set-ClusterQuorum -CloudWitness -AccountName "Storage_Account_Name" -AccessKey "Storage_Account_Access_Key"
+
+-- Exemplo
+Set-ClusterQuorum -CloudWitness -AccountName "stcursoadm" -AccessKey ""

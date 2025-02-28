@@ -1,0 +1,38 @@
+--Rebuild e reorganize usando as boas práticas
+EXECUTE dbo.IndexOptimize
+@Databases = 'AdventureWorks',
+@FragmentationLow = NULL,
+@FragmentationMedium = 'INDEX_REBUILD_OFFLINE',
+@FragmentationHigh = 'INDEX_REBUILD_OFFLINE',
+@FragmentationLevel1 = 5,
+@FragmentationLevel2 = 30,
+@MinNumberOfPages = 0,
+@FillFactor = 90,
+@LogToTable = 'Y', -- Opcional, será logado na tabela [CommandLog]
+--@TimeLimit = 3600 -- Após 3600 segundos nenhum comando será executado
+
+
+--Atualizar estatísticas em todos os bancos de dados de usuários
+EXECUTE dbo.IndexOptimize
+@Databases = 'USER_DATABASES',
+@FragmentationLow = NULL,
+@FragmentationMedium = NULL,
+@FragmentationHigh = NULL,
+@UpdateStatistics = 'ALL'
+--@LogToTable = 'Y', -- Opcional, será logado na tabela [CommandLog]
+
+--Parameters @Databases
+
+| Value | Description |
+| --- | --- |
+| SYSTEM_DATABASES | All system databases (master, msdb, and model) |
+| USER_DATABASES | All user databases |
+| ALL_DATABASES | All databases |
+| AVAILABILITY_GROUP_DATABASES | All databases in availability groups |
+| USER_DATABASES, -AVAILABILITY_GROUP_DATABASES | All user databases that are not in availability groups |
+| Db1 | The database Db1 |
+| Db1, Db2 | The databases Db1 and Db2 |
+| USER_DATABASES, -Db1 | All user databases, except Db1 |
+| %Db% | All databases that have “Db” in the name |
+| %Db%, -Db1 | All databases that have “Db” in the name, except Db1 |
+| ALL_DATABASES, -%Db% | All databases that do not have “Db” in the name |

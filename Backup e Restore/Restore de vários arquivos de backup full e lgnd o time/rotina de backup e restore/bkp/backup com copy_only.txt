@@ -1,0 +1,16 @@
+/*
+--Para utilizar a procedure dbo.DatabaseBackup  será necessário instalar outras duas procedures
+* CommandExecute
+* DatabaseBackup
+*/
+
+EXECUTE dbo.DatabaseBackup 
+@Databases = 'AdventureWorks,DBTemp,dirceuresende,Pedro', -- Faz backups dos bancos específicos
+@Directory = 'D:\HOMOLOGACAO\BACKUP',-- Diretório 
+@BackupType = 'FULL', -- Tipo de backup 
+@Verify = 'Y',
+@Compress = 'Y', -- Realiza a compressão
+@CheckSum = 'N', -- Verifica a integridade
+@CopyOnly = 'Y', -- Faz backup com copy only
+@DirectoryStructure = NULL, -- Criar um hierarquia
+@FileName = '{DatabaseName}_{BackupType}_{Partial}_{CopyOnly}_{Year}_{Month}_{Day}_{Hour}{Minute}{Second}_{FileNumber}.{FileExtension}' -- Específicar como ficará o nome do arquivo

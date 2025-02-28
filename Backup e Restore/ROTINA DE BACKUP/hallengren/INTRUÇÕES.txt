@@ -1,0 +1,99 @@
+--Backup FULL
+
+EXECUTE dbo.DatabaseBackup 
+@Databases = 'AdventureWorks,DBTemp,dirceuresende,Pedro', -- Faz backups dos bancos específicos
+@Directory = 'D:\SQL\SQL-BACKUP\FULL',-- Diretório 
+@BackupType = 'FULL', -- Tipo de backup 
+@Verify = 'Y',
+@Compress = 'Y', -- Realiza a compressão
+@CheckSum = 'N', -- Verifica a integridade
+--@CleanupTime = 24, -- Exclui backups antigos
+@DirectoryStructure = '{DatabaseName}{DirectorySeparator}', -- Criar um hierarquia
+@FileName = '{DatabaseName}_{BackupType}_{Partial}_{CopyOnly}_{Year}{Month}{Day}_{Hour}{Minute}{Second}_{FileNumber}.{FileExtension}' -- Específicar como ficará o nome do arquivo
+
+--Backup DIFF
+
+EXECUTE dbo.DatabaseBackup 
+@Databases = 'AdventureWorks,DBTemp,dirceuresende,Pedro', -- Faz backups dos bancos específicos
+@Directory = 'D:\SQL\SQL-BACKUP\FULL',-- Diretório 
+@BackupType = 'DIFF', -- Tipo de backup 
+@Verify = 'Y',
+@Compress = 'Y', -- Realiza a compressão
+@CheckSum = 'N', -- Verifica a integridade
+--@CleanupTime = 24, -- Exclui backups antigos
+@DirectoryStructure = '{DatabaseName}{DirectorySeparator}', -- Criar um hierarquia
+@FileName = '{DatabaseName}_{BackupType}_{Partial}_{CopyOnly}_{Year}{Month}{Day}_{Hour}{Minute}{Second}_{FileNumber}.{FileExtension}' -- Específicar como ficará o nome do arquivo
+
+--Backup LOG
+
+EXECUTE dbo.DatabaseBackup 
+@Databases = 'AdventureWorks,DBTemp,dirceuresende,Pedro', -- Faz backups dos bancos específicos
+@Directory = 'D:\SQL\SQL-BACKUP\FULL',-- Diretório 
+@BackupType = 'LOG', -- Tipo de backup 
+@Verify = 'Y',
+@Compress = 'Y', -- Realiza a compressão
+@CheckSum = 'N', -- Verifica a integridade
+--@CleanupTime = 24, -- Exclui backups antigos
+@DirectoryStructure = '{DatabaseName}{DirectorySeparator}', -- Criar um hierarquia
+@FileName = '{DatabaseName}_{BackupType}_{Partial}_{CopyOnly}_{Year}{Month}{Day}_{Hour}{Minute}{Second}_{FileNumber}.{FileExtension}' -- Específicar como ficará o nome do arquivo
+
+
+
+--Retenção dos arquivos de backup
+
+
+--Adicionar em cada uma das jobs de cada tipo de backup.
+--exluir arquivos antigos
+DECLARE @DeleteDate DATETIME = DATEADD(DAY,-5,GETDATE());
+DECLARE @ReturnVal int
+
+
+EXEC @ReturnVal = master.dbo.xp_delete_file 
+    @FileType = 0,
+    @FolderPath = N'D:\SQL\SQL-BACKUP',
+    @FileExtension = N'bak',
+    @Date = @DeleteDate,
+    @Subfolder = 1
+
+print @ReturnVal
+
+
+--Parameters @Databases
+
+
+| Value | Description |
+| --- | --- |
+| SYSTEM_DATABASES | All system databases (master, msdb, and model) |
+| USER_DATABASES | All user databases |
+| ALL_DATABASES | All databases |
+| AVAILABILITY_GROUP_DATABASES | All databases in availability groups |
+| USER_DATABASES, -AVAILABILITY_GROUP_DATABASES | All user databases that are not in availability groups |
+| Db1 | The database Db1 |
+| Db1, Db2 | The databases Db1 and Db2 |
+| USER_DATABASES, -Db1 | All user databases, except Db1 |
+| %Db% | All databases that have “Db” in the name |
+| %Db%, -Db1 | All databases that have “Db” in the name, except Db1 |
+| ALL_DATABASES, -%Db% | All databases that do not have “Db” in the name |
+
+
+
+
+--Parameters  @Directory
+
+| Value | Description |
+| --- | --- |
+| NULL | Back up to the SQL Server default backup directory. This is the default. |
+| C:\Backup | Back up to the directory C:\Backup. |
+| C:\Backup, D:\Backup | Back up to the directories C:\Backup and D:\Backup. |
+| \\Server1\Backup | Back up to the network share \\Server1\Backup. |
+| \\Server1\Backup, \\Server2\Backup | Back up to the network shares \\Server1\Backup and \\Server2\Backup. |
+| NUL | Backup to NUL. |
+
+
+--Parameters  @BackupType 
+
+| Value | Description |
+| --- | --- |
+| FULL | Full backup |
+| DIFF | Differential backup |
+| LOG | Transaction log backup |

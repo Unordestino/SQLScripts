@@ -1,0 +1,15 @@
+--Adicionar em cada uma das jobs de cada tipo de backup.
+--exluir todos os arquivos de backup.
+DECLARE @DeleteDate DATETIME = GETDATE();
+DECLARE @ReturnVal int
+
+
+EXEC @ReturnVal = master.dbo.xp_delete_file 
+    @FileType = 0,
+    @FolderPath = N'D:\SQL\SQL-BACKUP',
+    @FileExtension = N'bak',
+    @Date = @DeleteDate,
+    @Subfolder = 1
+
+print @ReturnVal
+

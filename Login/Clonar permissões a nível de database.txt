@@ -1,0 +1,73 @@
+CREATE TABLE #TMP_TESTE
+(
+id INT NOT NULL identity,
+role_name VARCHAR(50),
+member_name VARCHAR(200),
+db_name VARCHAR(50)
+)
+--drop table #TMP_TESTE
+
+DECLARE @DB_NAME VARCHAR(40)
+DECLARE @loginDestino VARCHAR(40)
+DECLARE @loginOrigem VARCHAR(40)
+DECLARE @CMD VARCHAR(7000)
+
+SET @loginDestino = 'APPC\J.Victor'
+set @loginOrigem = 'APPC\rafael.bezerra'
+
+
+
+DECLARE VAR_CURSOR CURSOR FOR
+SELECT name
+FROM sys.databases
+WHERE state_desc = 'ONLINE' AND name NOT IN ( 'tempdb', 'model')
+
+
+
+
+OPEN VAR_CURSOR
+
+FETCH NEXT FROM VAR_CURSOR INTO @DB_NAME
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+
+
+
+
+    SET @CMD = N'USE [' + @DB_NAME + N']; '
+
+	SET @CMD += 
+	'INSERT INTO #TMP_TESTE 
+	SELECT rdp.name AS role_name, rdm.name AS member_name, db_name() as db_name
+	FROM sys.database_role_members AS rm
+	JOIN sys.database_principals AS rdp
+	ON rdp.principal_id = rm.role_principal_id
+	JOIN sys.database_principals AS rdm
+	ON rdm.principal_id = rm.member_principal_id
+	WHERE rdm.name = ''' + @loginOrigem + '''
+	ORDER BY role_name, member_name
+	'
+	EXEC (@CMD)
+
+
+    FETCH NEXT FROM VAR_CURSOR INTO @DB_NAME
+
+
+
+END
+
+--END CURSOR
+CLOSE VAR_CURSOR
+DEALLOCATE VAR_CURSOR
+
+
+--CRIAR USUÁRIOS NOS BANCOS
+SELECT DISTINCT  'USE [' + db_name + '];  CREATE USER [' + @loginDestino + '] FOR LOGIN [' + @loginDestino + ']'
+from #TMP_TESTE
+
+--DAR PERMISSÃO PARA USUÁRIOS
+select *,
+'USE [' + db_name + ']; ALTER ROLE [' + role_name + '] ADD MEMBER [' + @loginDestino  + ']'
+from #TMP_TESTE
+

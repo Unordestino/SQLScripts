@@ -1,0 +1,65 @@
+   -- Adicione ações aqui, como enviar um alerta ou executar outras ações.
+
+	DECLARE @ResultadoHTML NVARCHAR(MAX);
+    DECLARE @ResultadoTemp NVARCHAR(MAX);
+   
+    SET @ResultadoHTML = N'<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Erro no Job de Backup</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #ffffff;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: #ff4d4d;
+            color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        p {
+            font-size: 16px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Erro no Job de Backup e Restore</h1>
+        <p>Ocorreu um problema durante a execução do teste de backup e restore. Por favor, verifique os logs para mais detalhes.</p>
+    </div>
+</body>
+</html>
+';
+
+   SET @ResultadoHTML = @ResultadoHTML + N'</tbody></table> 	<p>Relátorio de Backup e Restore do SQL Server, qualquer dúvida ficamos a disposição.</p>  </body></html>';
+
+   
+-- Envie o e-mail com o resultado formatado em HTML
+
+DECLARE @operator_email NVARCHAR(256);
+
+SELECT @operator_email = email_address
+FROM msdb.dbo.sysoperators
+WHERE name = 'Davi'
+
+
+EXEC msdb.dbo.sp_send_dbmail
+         @profile_name = 'HOSTWEB',
+         @recipients = @operator_email,
+         @subject = 'Relatório de Backup e Restore SQL Server',
+        @body = @ResultadoHTML,
+        @body_format = 'HTML';

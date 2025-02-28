@@ -1,0 +1,20 @@
+USE HandsOn  -- Substitua pelo nome do banco de dados que deseja consultar
+GO
+
+SELECT 
+    t.name AS TableName,
+    c.name AS ColumnName,
+    ftc.name AS FullTextCatalogName,
+    ft.is_enabled AS IsFullTextIndexEnabled
+FROM 
+    sys.fulltext_indexes AS ft
+JOIN 
+    sys.tables AS t ON ft.object_id = t.object_id
+JOIN 
+    sys.fulltext_index_columns AS fic ON ft.object_id = fic.object_id
+JOIN 
+    sys.columns AS c ON fic.object_id = c.object_id AND fic.column_id = c.column_id
+JOIN 
+    sys.fulltext_catalogs AS ftc ON ft.fulltext_catalog_id = ftc.fulltext_catalog_id
+ORDER BY 
+    TableName;

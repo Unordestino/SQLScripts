@@ -1,0 +1,20 @@
+SELECT 
+    bs.database_name AS 'Database',
+    bs.user_name AS 'Backup User',
+    bs.backup_start_date AS 'Backup Start Date',
+    bs.backup_finish_date AS 'Backup Finish Date',
+    CASE 
+        WHEN bs.type = 'D' THEN 'Full'
+        WHEN bs.type = 'I' THEN 'Differential'
+        WHEN bs.type = 'L' THEN 'Log'
+        ELSE 'Other'
+    END AS 'Backup Type',
+    bmf.physical_device_name AS 'Backup File Location',
+    bs.backup_size / 1024 / 1024 AS 'Backup Size (MB)'
+FROM 
+    msdb.dbo.backupset bs
+JOIN 
+    msdb.dbo.backupmediafamily bmf ON bs.media_set_id = bmf.media_set_id
+ORDER BY 
+   bs.backup_start_date  DESC;
+

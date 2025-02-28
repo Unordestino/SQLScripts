@@ -148,6 +148,68 @@ Totalmente suportado: índices rowstore, índices columnstore, tabelas temporais
 Tabelas de gráficos: sem suporte. Esses objetos aparecem nos resultados, mas não fazemos nada especial com eles, como dizer que são tabelas de gráficos.
 Índices espaciais: sem suporte. Nós chamamos isso de espacial, mas não fazemos nenhum tratamento especial para eles.
 Índices XML: não suportados. Esses objetos aparecem nos resultados, mas não incluímos as colunas ou tamanhos do índice.
+------------------------------------------------------------------------
 
 
+Verifica seus backups e relata estimativas de RPO e RTO com base em dados históricos no msdb ou em um local centralizado para [msdb].dbo.backupset.
 
+Os parâmetros incluem:
+
+@HoursBack -- Quantas horas no histórico de backup você quer ir. Deve ser um número negativo (afinal, estamos voltando no tempo). Mas se você digitar um número positivo, nós o tornaremos negativo para você. De nada.
+@MSDBName — se você precisar prefixar dbo.backupset com um nome de banco de dados alternativo.
+@AGName -- Se você tiver mais de 1 AG no servidor e não souber o nome do listener, especifique o nome do AG para o qual você deseja usar o listener, para enviar dados de backup. Isso pode ser usado durante a análise em uma versão futura para filtragem.
+@RestoreSpeedFullMBps, @RestoreSpeedDiffMBps, @RestoreSpeedLogMBps -- se você conhece suas velocidades de restauração, pode inseri-las aqui para calcular melhor seus piores tempos de RPO. Caso contrário, presumimos que sua velocidade de restauração será a mesma que sua velocidade de backup. Isso provavelmente não é verdade - sua velocidade de restauração provavelmente será pior - mas esses números já assustam as pessoas.
+@PushBackupHistoryToListener -- Defina isso para 1 para pular a análise e usar sp_BlitzBackups para enviar dados de backup do msdb para um local centralizado (mais sobre a mecânica disso a seguir)
+@WriteBackupsToListenerName -- Este é o nome do AG listener, e DEVE ter um linked server configurado apontando para ele. Sim, isso significa que você precisa criar um linked server que aponte para o AG Listener, com as permissões apropriadas para gravar dados.
+@WriteBackupsToDatabaseName -- Não pode ser 'msdb' se você for usar o mecanismo de push de dados de backup. Não podemos gravar em suas tabelas msdb reais.
+@WriteBackupsLastHours -- Quantas horas no passado você quer mover os dados. Deve ser um número negativo (afinal, estamos voltando no tempo). Mas se você digitar um número positivo, nós o tornaremos negativo para você. De nada.
+
+Um exemplo de execução de sp_BlitzBackups para enviar dados se parece com isto:
+
+EXEC sp_BlitzBackups @PushBackupHistoryToListener = 1, -- Turn it on!
+                     @WriteBackupsToListenerName = 'AG_LISTENER_NAME', -- Name of AG Listener and Linked Server 
+                     @WriteBackupsToDatabaseName = 'FAKE_MSDB_NAME',  -- Fake MSDB name you want to push to. Remember, can't be real MSDB.
+                     @WriteBackupsLastHours = -24 -- Hours back in time you want to go
+
+sp_DatabaseRestore: restaurações multi-arquivos mais fáceis
+
+
+Se você usar os scripts de backup de Ola Hallengren , o DatabaseRestore.sql ajudará você a restaurar rapidamente um banco de dados para o ponto mais recente no tempo.
+
+Os parâmetros incluem:
+
+@Database - o nome do banco de dados, como LogShipMe
+@RestaurarNomeDoBancoDeDados
+@BackupPathFull - normalmente um caminho UNC como '\\FILESERVER\BACKUPS\SQL2016PROD1A\LogShipMe\FULL' que aponta para onde os backups completos são armazenados. Observe que se o caminho não existir, não o criaremos, e a consulta poderá levar mais de 30 segundos se você especificar um nome de servidor inválido.
+@BackupPathDiff, @BackupPathLog - assim como o Full, isso deve ser definido para o caminho exato onde os diferenciais e logs são armazenados. Não anexamos nada a esses parâmetros.
+@MoveFiles, @MoveDataDrive, @MoveLogDrive - se você quiser restaurar para algum lugar diferente dos locais padrão do seu banco de dados.
+@FileNamePrefix - Prefixo para adicionar aos nomes de todos os arquivos restaurados. Útil quando você precisa restaurar diferentes backups do mesmo banco de dados no mesmo diretório.
+@RunCheckDB - padrão 0. Quando definido como 1, executamos o procedimento armazenado DatabaseIntegrityCheck de Ola Hallengren neste banco de dados e registramos os resultados na tabela. Usamos os parâmetros padrão desse procedimento armazenado, nada extravagante.
+@TestRestore - padrão 0. Quando definido como 1, excluímos o banco de dados após a restauração ser concluída. Usado apenas para testar suas restaurações. Especialmente útil em combinação com @RunCheckDB = 1 porque excluiremos o banco de dados após executar checkdb, mas saiba que excluiremos o banco de dados mesmo se ele falhar nos testes checkdb.
+@RestoreDiff - padrão 0. Quando definido como 1, restauramos os backups completos, diferenciais e de log necessários (em vez de apenas completos e de log) para chegar ao ponto mais recente no tempo.
+@ContinueLogs - padrão 0. Quando definido como 1, não restauramos um backup completo ou diferencial - restauramos apenas os backups de log de transação. Bom para restaurações de log contínuas com ferramentas como sp_AllNightLog.
+@RunRecovery - padrão 0. Quando definido como 1, executamos RESTORE WITH RECOVERY, colocando o banco de dados em modo gravável, e nenhum backup de log adicional pode ser restaurado.
+@ExistingDBAction - se o banco de dados já existir quando tentarmos restaurá-lo, 1 define o banco de dados para o modo de usuário único, 2 elimina as conexões e 3 elimina as conexões e, em seguida, descarta o banco de dados.
+@Debug - padrão 0. Quando 1, imprimimos mensagens do que estamos fazendo na aba de mensagens do SSMS.
+@StopAt NVARCHAR(14) - passe uma data e hora para parar suas restaurações em um horário como '20170508201501'. Isso não usa o parâmetro StopAt para o comando de restauração - ele simplesmente para de restaurar logs que teriam o conteúdo dessa data/hora. (Por exemplo, se você estiver fazendo backups a cada 15 minutos na hora, e passar 9:05 AM como parte do horário de restauração, as restaurações parariam no seu último backup de log que não inclui os dados das 9:05 AM - mas não restauraria até 9:05 AM.)
+@SkipBackupsAlreadyInMsdb - padrão 0. Quando definido como 1, verificamos o MSDB para o backup restaurado mais recentemente deste caminho de log e pulamos todos os arquivos de backup anteriores a ele. Útil se você estiver puxando backups de uma rede lenta e não quiser esperar para verificar o cabeçalho de restauração de cada backup.
+@EnableBroker - padrão 0. Quando definido como 1, executamos RESTORE WITH ENABLE_BROKER, habilitando o service broker. A menos que especificado, o service broker é desabilitado na restauração, mesmo que tenha sido habilitado quando o backup foi feito.
+
+Parâmetros comuns a muitos dos procedimentos armazenados
+
+
+@Help = 1 - retorna um conjunto de resultados ou imprime mensagens explicando a entrada e a saída do procedimento armazenado. Certifique-se de verificar a aba Messages no SSMS para lê-lo.
+@ExpertMode = 1 - ativa mais detalhes úteis para aprofundar os resultados.
+@OutputDatabaseName, @OutputSchemaName, @OutputTableName - passe todos os três, e a saída do proc armazenado será gravada em uma tabela. Criaremos a tabela se ela ainda não existir. @OutputServerName enviará os dados para um servidor vinculado, desde que você configure o servidor vinculado primeiro e habilite chamadas RPC OUT.
+
+
+Para verificar versões de qualquer um dos procedimentos armazenados, use seus parâmetros de saída para Version e VersionDate assim:
+
+DECLARE @VersionOutput VARCHAR(30), @VersionDateOutput DATETIME;
+EXEC sp_Blitz 
+    @Version = @VersionOutput OUTPUT, 
+    @VersionDate = @VersionDateOutput OUTPUT,
+    @VersionCheckMode = 1;
+SELECT
+    @VersionOutput AS Version, 
+    @VersionDateOutput AS VersionDate;

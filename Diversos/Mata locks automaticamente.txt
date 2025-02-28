@@ -1,0 +1,168 @@
+
+--DEFINE OS MINUTOS
+DECLARE @TEMPO INT = 7
+SET  @TEMPO = @TEMPO * 60
+
+
+-- Variável para identificar lock_root
+DECLARE @lock_root NVARCHAR(255) = (
+    SELECT COUNT(spid) 
+    FROM sys.sysprocesses 
+    WHERE spid IN (
+        SELECT blocked 
+        FROM sys.sysprocesses
+        WHERE blocked > 0
+    ) 
+    AND blocked = 0
+);
+
+IF @lock_root <> 0
+BEGIN
+    -- Captura o horário do último lock
+ DECLARE @time DATETIME = (
+	    SELECT TOP 1 r.start_time  
+        FROM sys.sysprocesses as s
+		INNER JOIN sys.dm_exec_requests  as r
+		ON r.session_id = s.spid
+        WHERE s.blocked != 0 
+        ORDER BY r.start_time DESC
+);
+
+    -- Verifica se o lock tem mais de 5 minutos
+    IF DATEDIFF(SECOND, @time, GETDATE()) >= @TEMPO 
+    BEGIN
+        -- Cria uma tabela temporária com os SPIDs bloqueadores numerados
+        SELECT 
+            ROW_NUMBER() OVER (ORDER BY spid) AS ID_Sequencial,
+            spid,
+			DB_NAME( dbid) AS [DB_NAME],
+			GETDATE() as [DATA]
+        INTO #TBL_LOCK
+        FROM sys.sysprocesses 
+        WHERE spid IN (
+            SELECT blocked 
+            FROM sys.sysprocesses
+            WHERE blocked > 0
+        ) 
+        AND blocked = 0;
+
+        -- Declaração de variáveis para controle do loop
+        DECLARE @CONT INT = 1;
+        DECLARE @QTD INT;
+
+        -- Conta quantos SPIDs estão bloqueados
+        SELECT @QTD = COUNT(spid) 
+        FROM sys.sysprocesses 
+        WHERE spid IN (
+            SELECT blocked 
+            FROM sys.sysprocesses
+            WHERE blocked > 0
+        ) 
+        AND blocked = 0;
+
+        DECLARE @CMD VARCHAR(200);
+
+        -- Loop para matar cada processo bloqueador
+        WHILE @QTD >= @CONT
+        BEGIN
+            -- Monta o comando KILL para o SPID correspondente
+            SELECT @CMD = 'KILL ' + CAST(spid AS VARCHAR(20)) + ';' 
+            FROM #TBL_LOCK 
+            WHERE ID_Sequencial = @CONT;
+
+
+
+            -- Executa o comando para matar o processo
+            EXEC(@CMD);
+
+            -- Incrementa o contador
+            SET @CONT += 1;
+        END;
+    END;
+END;
+
+
+IF OBJECT_ID('tempdb..#TBL_LOCK') IS NOT NULL
+BEGIN
+
+
+    -- Declarar variáveis necessárias
+    DECLARE @ResultadoHTML NVARCHAR(MAX);
+    DECLARE @ResultadoTemp NVARCHAR(MAX);
+    DECLARE @Coluna1 NVARCHAR(255), @Coluna2 NVARCHAR(50), @Coluna3 NVARCHAR(50);
+
+    -- Início do HTML
+    SET @ResultadoHTML = N'<html>
+    <head>
+        <style type="text/css">
+            table { border: outset 2.25pt; }
+            thead { background: #C10A0A; }
+            th { color: #fff; padding: 10px; }
+            td { padding: 3.0pt 3.0pt 3.0pt 3.0pt; }
+        </style>
+    </head>
+    <body>
+        <img src="https://www.hostweb.com.br/wp-content/uploads/elementor/thumbs/logo-hostweb-01-p42fabr8umczbaiaqfqnvmeyfpr6eebo9leatlo39i.png" title="logo-hostweb-01" alt="logo-hostweb-01">
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>SPID</th>
+                    <th>DB_NAME</th>
+                    <th>Last Batch</th>
+                </tr>
+            </thead>
+            <tbody>';
+
+    -- Obter o número total de registros
+    DECLARE @TotalRegistros INT;
+    SET @TotalRegistros = (SELECT COUNT(*)  FROM #TBL_LOCK );
+
+    -- Loop para processar cada registro
+    DECLARE @Contador INT = 1;
+    WHILE @Contador <= @TotalRegistros
+    BEGIN
+        -- Obter os dados do registro atual
+        SELECT @Coluna1 = spid,
+			   @Coluna2 = DB_NAME,
+               @Coluna3 = CONVERT(NVARCHAR(50), [DATA], 120) -- Converte para string no formato ISO  
+        FROM #TBL_LOCK
+        WHERE ID_Sequencial = @Contador;
+
+        -- Formatar a linha em HTML
+        SET @ResultadoTemp = N'<tr>
+            <td>' + ISNULL(@Coluna1, 'N/A') + N'</td>
+            <td>' + ISNULL(@Coluna2, 'N/A') + N'</td>
+			<td>' + ISNULL(@Coluna3, 'N/A') + N'</td>
+
+        </tr>';
+
+        -- Adicionar ao HTML final
+        SET @ResultadoHTML += @ResultadoTemp;
+
+        -- Incrementar o contador
+        SET @Contador = @Contador + 1;
+    END;
+
+    -- Finalizar o HTML
+    SET @ResultadoHTML += N'</tbody></table>
+    <p>Relatório de bloqueios encerrados.</p>
+    </body></html>';
+
+
+
+    -- Obter o e-mail do operador
+    DECLARE @operator_email NVARCHAR(256);
+    SELECT @operator_email = email_address
+    FROM msdb.dbo.sysoperators
+    WHERE name = 'temp';
+
+
+    -- Enviar o e-mail com o resultado formatado
+    EXEC msdb.dbo.sp_send_dbmail
+         @profile_name = 'TESTE03',
+         @recipients = @operator_email,
+         @subject = 'Relatório de bloqueios encerrados.',
+         @body = @ResultadoHTML,
+         @body_format = 'HTML';
+
+END
