@@ -1,0 +1,26 @@
+CREATE TABLE [dbo].[Log_Limpeza_Cache](
+[Id_Log] [int] IDENTITY(1,1) ,
+[Dt_Limpeza] [datetime] ,
+[Tipo_Cache] [varchar](30) ,
+[Tamanho_MB] [numeric](15, 2) )
+
+CREATE PROCEDURE [dbo].[stpLimpa_Memory_Cache] AS
+BEGIN
+DECLARE @USERSTORE_TOKENPERM numeric(15,2), @CACHESTORE_SQLCP numeric(15,2)
+SELECT @CACHESTORE_SQLCP = SUM(pages_kb)/1024.
+FROM sys.dm_os_memory_clerks
+WHERE type = 'CACHESTORE_SQLCP'
+
+IF @CACHESTORE_SQLCP > 60
+begin
+insert into Log_Limpeza_Cache(Dt_Limpeza,Tipo_Cache,Tamanho_MB)
+select getdate(), 'CACHESTORE_SQLCP', @CACHESTORE_SQLCP
+
+DBCC FREESYSTEMCACHE('SQL Plans')
+end
+
+END
+
+select * from [Log_Limpeza_Cache]
+
+[stpLimpa_Memory_Cache]
