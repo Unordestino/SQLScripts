@@ -1,0 +1,8 @@
+SELECT 
+    db_name(database_id) AS NomeBanco,
+    CAST(SUM(size) * 8.0 / 1024 / 1024 AS DECIMAL(18,2)) AS TamanhoTotalGB
+FROM 
+    sys.master_files
+GROUP BY 
+    database_id
+	order by TamanhoTotalMB desc

@@ -1,0 +1,31 @@
+CREATE EVENT SESSION [Audit_Stop_Job2] ON SERVER
+ADD EVENT sqlserver.sql_batch_starting (
+    ACTION(sqlserver.sql_text, sqlserver.username, sqlserver.client_hostname, sqlserver.nt_username)
+    WHERE sqlserver.sql_text LIKE '%sp_stop_job%'
+),
+ADD EVENT sqlserver.rpc_starting (
+    ACTION(sqlserver.sql_text, sqlserver.username, sqlserver.client_hostname, sqlserver.nt_username)
+    WHERE object_name = 'sp_stop_job'
+)
+ADD TARGET package0.event_file (
+    SET filename = 'E:\SQL19\DADOS\Audit_Stop_Job2.xel'
+)
+WITH (STARTUP_STATE = ON);
+
+ALTER EVENT SESSION [Audit_Stop_Job2] ON SERVER STATE = START;
+
+
+SELECT 
+    event_data.value('(event/@timestamp)[1]', 'DATETIME') AS EventTime,
+    event_data.value('(event/action[@name="nt_username"]/value)[1]', 'NVARCHAR(100)') AS NTUser,
+    event_data.value('(event/action[@name="username"]/value)[1]', 'NVARCHAR(100)') AS SQLUser,
+    event_data.value('(event/action[@name="client_hostname"]/value)[1]', 'NVARCHAR(100)') AS HostName,
+    event_data.value('(event/action[@name="client_app_name"]/value)[1]', 'NVARCHAR(100)') AS AppName,
+    event_data.value('(event/action[@name="session_id"]/value)[1]', 'INT') AS SessionID,
+    event_data.value('(event/action[@name="sql_text"]/value)[1]', 'NVARCHAR(MAX)') AS SQLText
+FROM 
+(
+    SELECT CAST(event_data AS XML) AS event_data
+    FROM sys.fn_xe_file_target_read_file('E:\SQL19\DADOS\Audit_Stop_Job*.xel', NULL, NULL, NULL)
+) AS Events
+ORDER BY EventTime DESC;

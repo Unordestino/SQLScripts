@@ -1,0 +1,37 @@
+use master
+go
+
+CREATE SERVER AUDIT AuditoriaExecucao_sp_update_job
+TO FILE (FILEPATH = 'F:\data\Traces\', MAXSIZE = 10 MB, MAX_FILES = 20, RESERVE_DISK_SPACE = OFF)
+WITH (ON_FAILURE = CONTINUE);
+GO
+
+ALTER SERVER AUDIT AuditoriaExecucao_sp_update_job
+WITH (STATE = ON);
+GO
+
+
+USE msdb;
+GO
+
+CREATE DATABASE AUDIT SPECIFICATION AuditoriaExecucao_sp_update_job_DBSpec
+FOR SERVER AUDIT AuditoriaExecucao_sp_update_job
+ADD (EXECUTE ON OBJECT::[dbo].[sp_update_job] BY [public]);  -- Audita qualquer usuário
+GO
+
+ALTER DATABASE AUDIT SPECIFICATION AuditoriaExecucao_sp_update_job_DBSpec
+WITH (STATE = ON);
+GO
+
+
+SELECT
+    event_time,
+    server_principal_name,
+    database_name,
+    object_name,
+    statement,
+    session_id,
+    host_name,
+    application_name
+FROM sys.fn_get_audit_file('F:\data\Traces\*.sqlaudit', NULL, NULL)
+WHERE object_name = 'sp_update_job';

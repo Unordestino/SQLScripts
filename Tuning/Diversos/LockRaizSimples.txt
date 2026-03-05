@@ -1,0 +1,5 @@
+SELECT 'RAIZ' as STATUS, * FROM sys.sysprocesses 
+where spid IN(SELECT distinct blocked from sys.sysprocesses where blocked > 0) and blocked = 0
+UNION ALL
+SELECT 'BLOCK' as STATUS, * FROM sys.sysprocesses 
+where blocked  > 0

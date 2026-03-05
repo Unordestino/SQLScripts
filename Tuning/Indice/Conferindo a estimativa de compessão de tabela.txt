@@ -1,0 +1,41 @@
+--Conferindo a estimativa de compessão de tabela
+
+
+CREATE TABLE #Compressao
+(
+    object_name SYSNAME,
+    schema_name SYSNAME,
+    index_id INT,
+    partition_number INT,
+    size_with_current_compression_setting BIGINT,
+    size_with_requested_compression_setting BIGINT,
+    sample_size_with_current_compression_setting BIGINT,
+    sample_size_with_requested_compression_setting BIGINT
+);
+
+
+INSERT INTO #Compressao
+EXEC sp_estimate_data_compression_savings 
+    @schema_name = 'dbo',
+    @object_name = 'Porto Sudeste$Change Log Entry',
+    @index_id = NULL,
+    @partition_number = NULL,
+    @data_compression = 'PAGE';
+
+
+
+
+SELECT 
+    object_name,
+    SUM(size_with_current_compression_setting) / 1024.0 AS TamanhoAtualMB,
+    SUM(size_with_requested_compression_setting) / 1024.0 AS TamanhoEstimadoMB,
+    (SUM(size_with_current_compression_setting) 
+     - SUM(size_with_requested_compression_setting)) / 1024.0 AS EconomiaMB,
+    (
+        (SUM(size_with_current_compression_setting) 
+        - SUM(size_with_requested_compression_setting)) * 100.0 
+        / NULLIF(SUM(size_with_current_compression_setting),0)
+    ) AS EconomiaPercentual
+FROM #Compressao
+GROUP BY object_name
+ORDER BY EconomiaMB DESC;

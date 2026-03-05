@@ -1,0 +1,14 @@
+-- Habilita recursos avançados de configuração
+EXEC sp_configure 'show advanced options', 1;
+RECONFIGURE;
+
+-- Habilita o xp_cmdshell
+EXEC sp_configure 'xp_cmdshell', 1;
+RECONFIGURE;
+
+
+EXEC xp_cmdshell 'dir D:\MSSQL14.BITIC1\MSSQL\Log\';
+
+EXEC xp_cmdshell 'powershell -Command "Get-Content ''D:\MSSQL14.BITIC1\MSSQL\Log\SQLDump0002.log'' -Tail 50"';
+
+EXEC xp_cmdshell 'powershell -Command "Get-Content ''D:\MSSQL14.BITIC1\MSSQL\Log\SQLAGENT.OUT''"';
