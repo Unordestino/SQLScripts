@@ -9,7 +9,7 @@
       <am:Name>SSDTRS</am:Name>
       <am:Version>17.9.34728.123</am:Version>
     </am:UpdatedBy>
-    <am:LastModifiedTimestamp>2024-07-17T19:23:16.0931743Z</am:LastModifiedTimestamp>
+    <am:LastModifiedTimestamp>2024-05-19T18:06:54.2741939Z</am:LastModifiedTimestamp>
   </am:AuthoringMetadata>
   <df:DefaultFontFamily>Segoe UI</df:DefaultFontFamily>
   <AutoRefresh>0</AutoRefresh>
@@ -28,43 +28,7 @@
     <DataSet Name="dsPrincipal">
       <Query>
         <DataSourceName>localhost</DataSourceName>
-        <CommandText>SELECT getdate() as DataHora, spid as SPID, 'RAIZ' as Status, waittime/1000 as TempoEspera_Seg, blocked as SPID_Blocking,
-db_name(sp.dbid) Banco,cast(rtrim(isnull(hostname,'N/A')) as varchar(50)) Computador,
-case when sp.nt_domain is null or sp.nt_domain = '' then 'N/A' else rtrim(sp.nt_domain) + '/' + nt_username end as UsuarioWindows, 
-cast(rtrim(loginame) as varchar(50)) as LoginSQL, 
-
-case 
-when s.program_name like 'SQLAgent - TSQL JobStep (Job%' 
-then (select 'JOB: ' + MAX(name) + ' (' + replace( substring(s.program_name,CHARINDEX(': Step',s.program_name)+2,100) ,')','') + ')' FROM msdb.dbo.sysjobs WHERE dbo.udf_sysjobs_getprocessid(job_id) = substring(s.program_name,32,8) )
-else s.program_name
-end as Aplicacao, 
-
-s.client_interface_name as AppInterface,
-open_tran as QtdTransacoes, cmd as TipoComando, last_batch as UltimoTSQL,qt.text as InstrucaoTSQL
-
-FROM sys.sysprocesses sp LEFT JOIN sys.dm_exec_sessions s ON s.session_id = sp.spid
-OUTER APPLY sys.dm_exec_sql_text(sp.sql_handle) AS qt
-WHERE spid IN (SELECT distinct blocked FROM sys.sysprocesses where blocked &gt; 0) AND blocked = 0
-
-UNION 
-
-SELECT getdate(), spid as SPID, 'BLOCK' as Status, waittime/1000 as TempoEspera_Seg, blocked as SPID_Blocking,
-db_name(sp.dbid) Banco,cast(rtrim(isnull(hostname,'N/A')) as varchar(50)) Computador,
-case when sp.nt_domain is null or sp.nt_domain = '' then 'N/A' else rtrim(sp.nt_domain) + '/' + nt_username end as UsuarioWindows, 
-cast(rtrim(loginame) as varchar(50)) as LoginSQL, 
-
-case 
-when s.program_name like 'SQLAgent - TSQL JobStep (Job%' 
-then (select 'JOB: ' + MAX(name) + ' (' + replace( substring(s.program_name,CHARINDEX(': Step',s.program_name)+2,100) ,')','') + ')' FROM msdb.dbo.sysjobs WHERE dbo.udf_sysjobs_getprocessid(job_id) = substring(s.program_name,32,8) )
-else s.program_name
-end as Aplicacao, 
- 
-s.client_interface_name as AppInterface,
-open_tran as QtdTransacoes, cmd as TipoComando, last_batch as UltimoTSQL,qt.text as InstrucaoTSQL
-
-FROM sys.sysprocesses sp LEFT JOIN sys.dm_exec_sessions s ON s.session_id = sp.spid
-OUTER APPLY sys.dm_exec_sql_text(sp.sql_handle) AS qt
-WHERE  spid &gt; 50 and blocked &gt; 0</CommandText>
+        <CommandText>EXEC dbo.DBA_BlockingOnline</CommandText>
       </Query>
       <Fields>
         <Field Name="DataHora">

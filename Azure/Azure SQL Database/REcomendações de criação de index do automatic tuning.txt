@@ -1,0 +1,12 @@
+--Pode demorar até 12h para aparecer uma recomendação, 
+--tudo vai depender do tipo de contratação e qauntidade de DTU.
+SELECT Type as Tipo, Score,
+JSON_VALUE([state],'$.currentValue') as [Status],
+JSON_VALUE([state],'$.lastChange') as UltimaAtualizacao,
+JSON_VALUE(details,'$.createIndexDetails.indexType') as TipoDoIndice,
+JSON_VALUE(details,'$.createIndexDetails.estimatedImpact') as TamanhoEstimado,
+JSON_VALUE(details,'$.implementationDetails.script') as ScriptSQL,
+[State], [Details]
+
+FROM sys.dm_db_tuning_recommendations
+ORDER BY score DESC

@@ -1,0 +1,5 @@
+SELECT @@SERVERNAME as Servidor, b.elastic_pool_name as ElasticPool, a.[name] as Banco, b.edition as Edicao
+FROM sys.databases a 
+join sys.database_service_objectives b on a.database_id = b.database_id
+WHERE a.[name] <> 'master'
+ORDER BY b.elastic_pool_name, a.[name]

@@ -1,0 +1,46 @@
+--Processos que mais estão usando a tempdb
+SELECT 
+    'KILL ' + CAST(s.session_id AS VARCHAR) AS ComandoKill,
+    s.login_name,
+    s.host_name,
+    ((t.user_objects_alloc_page_count + t.internal_objects_alloc_page_count) * 8) / 1024 AS TotalMB
+FROM sys.dm_db_session_space_usage t
+JOIN sys.dm_exec_sessions s ON t.session_id = s.session_id
+WHERE s.is_user_process = 1
+ORDER BY TotalMB DESC;
+
+--Limpar cache e sessões (liberar espaço interno)
+CHECKPOINT;
+GO
+DBCC DROPCLEANBUFFERS;
+GO
+DBCC FREEPROCCACHE;
+GO
+DBCC FREESYSTEMCACHE ('ALL');
+GO
+
+
+--Conferir uso atual da tempdb
+USE tempdb;
+GO
+
+SELECT 
+    SUM(user_object_reserved_page_count) * 8 / 1024 AS UserObjectsMB,
+    SUM(internal_object_reserved_page_count) * 8 / 1024 AS InternalObjectsMB,
+    SUM(version_store_reserved_page_count) * 8 / 1024 AS VersionStoreMB,
+    SUM(unallocated_extent_page_count) * 8 / 1024 AS FreeSpaceMB
+FROM sys.dm_db_file_space_usage;
+
+
+--Rodar shrink agressivo
+SELECT 'DBCC SHRINKFILE ([' + name + '], 1024)' FROM tempdb.sys.database_files;
+USE tempdb;
+GO
+
+DBCC SHRINKFILE (tempdev, 1024); 
+DBCC SHRINKFILE (templog, 512);
+GO
+
+
+
+

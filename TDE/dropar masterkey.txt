@@ -1,0 +1,6 @@
+-- DROP
+USE master
+go
+DROP DATABASE IF exists DBCript
+DROP CERTIFICATE DBCriptCert
+DROP MASTER KEY

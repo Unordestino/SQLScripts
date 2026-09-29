@@ -1,0 +1,9 @@
+SELECT * FROM sys.dm_resource_governor_resource_pools
+SELECT * FROM sys.dm_resource_governor_workload_groups
+
+SELECT s.[session_id], s.login_name, s.[program_name],
+wg.name AS WorkloadGroup, rp.name AS ResourcePool
+FROM sys.dm_exec_sessions s
+JOIN sys.dm_resource_governor_workload_groups wg ON s.group_id = wg.group_id
+JOIN sys.dm_resource_governor_resource_pools rp ON wg.pool_id = rp.pool_id
+WHERE s.is_user_process = 1

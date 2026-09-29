@@ -1,0 +1,227 @@
+1. Criar pasta no servidor
+
+No servidor SQL, crie uma pasta, por exemplo:
+
+D:\XE
+
+A conta de serviço do SQL Server precisa ter permissão de escrita nessa pasta.
+
+Exemplo: se o serviço roda com NT Service\MSSQLSERVER, dê permissão nessa pasta para essa conta.
+
+2. Criar a sessão Extended Events gravando em disco local
+
+Execute no SQL Server local:
+
+CREATE EVENT SESSION [XE_Captura_Comandos_Erros]
+ON SERVER
+ADD EVENT sqlserver.sql_statement_completed
+(
+    ACTION
+    (
+        sqlserver.sql_text,
+        sqlserver.username,
+        sqlserver.server_principal_name,
+        sqlserver.database_name,
+        sqlserver.client_app_name,
+        sqlserver.client_hostname,
+        sqlserver.client_pid,
+        sqlserver.session_id
+    )
+),
+ADD EVENT sqlserver.rpc_completed
+(
+    ACTION
+    (
+        sqlserver.sql_text,
+        sqlserver.username,
+        sqlserver.server_principal_name,
+        sqlserver.database_name,
+        sqlserver.client_app_name,
+        sqlserver.client_hostname,
+        sqlserver.client_pid,
+        sqlserver.session_id
+    )
+),
+ADD EVENT sqlserver.error_reported
+(
+    ACTION
+    (
+        sqlserver.sql_text,
+        sqlserver.username,
+        sqlserver.server_principal_name,
+        sqlserver.database_name,
+        sqlserver.client_app_name,
+        sqlserver.client_hostname,
+        sqlserver.client_pid,
+        sqlserver.session_id
+    )
+    WHERE 
+    (
+        severity >= 10
+    )
+)
+ADD TARGET package0.event_file
+(
+    SET filename = N'D:\XE\XE_Captura_Comandos_Erros.xel',
+        max_file_size = 100,
+        max_rollover_files = 10
+)
+WITH
+(
+    MAX_MEMORY = 4096 KB,
+    EVENT_RETENTION_MODE = ALLOW_SINGLE_EVENT_LOSS,
+    MAX_DISPATCH_LATENCY = 5 SECONDS,
+    MAX_EVENT_SIZE = 0 KB,
+    MEMORY_PARTITION_MODE = NONE,
+    TRACK_CAUSALITY = OFF,
+    STARTUP_STATE = ON
+);
+GO
+
+Iniciar a sessão:
+
+ALTER EVENT SESSION [XE_Captura_Comandos_Erros]
+ON SERVER
+STATE = START;
+GO
+
+Verificar se está rodando:
+
+SELECT 
+    name,
+    create_time
+FROM sys.dm_xe_sessions
+WHERE name = 'XE_Captura_Comandos_Erros';
+3. Consultar os arquivos .xel
+WITH Eventos AS
+(
+    SELECT
+        object_name AS event_name,
+        file_name,
+        file_offset,
+        CAST(event_data AS XML) AS event_xml
+    FROM sys.fn_xe_file_target_read_file
+    (
+        N'D:\XE\XE_Captura_Comandos_Erros*.xel',
+        NULL,
+        NULL,
+        NULL
+    )
+)
+SELECT TOP 500
+    DATEADD(HOUR, -3, event_xml.value('(event/@timestamp)[1]', 'datetime2')) AS event_time_brt,
+    event_xml.value('(event/@timestamp)[1]', 'datetime2') AS event_time_utc,
+    event_name,
+
+    event_xml.value('(event/action[@name="database_name"]/value/text())[1]', 'sysname') AS database_name,
+    event_xml.value('(event/action[@name="username"]/value/text())[1]', 'sysname') AS username,
+    event_xml.value('(event/action[@name="server_principal_name"]/value/text())[1]', 'sysname') AS server_principal_name,
+
+    event_xml.value('(event/action[@name="client_hostname"]/value/text())[1]', 'nvarchar(256)') AS client_hostname,
+    event_xml.value('(event/action[@name="client_app_name"]/value/text())[1]', 'nvarchar(256)') AS client_app_name,
+    event_xml.value('(event/action[@name="session_id"]/value/text())[1]', 'int') AS session_id,
+
+    event_xml.value('(event/data[@name="error_number"]/value/text())[1]', 'int') AS error_number,
+    event_xml.value('(event/data[@name="severity"]/value/text())[1]', 'int') AS severity,
+    event_xml.value('(event/data[@name="message"]/value/text())[1]', 'nvarchar(max)') AS error_message,
+
+    event_xml.value('(event/action[@name="sql_text"]/value/text())[1]', 'nvarchar(max)') AS sql_text
+FROM Eventos
+ORDER BY event_time_utc DESC;
+4. Criar uma view para facilitar a consulta
+USE master;
+GO
+
+CREATE OR ALTER VIEW dbo.vw_XE_Captura_Comandos_Erros
+AS
+WITH Eventos AS
+(
+    SELECT
+        object_name AS event_name,
+        file_name,
+        file_offset,
+        CAST(event_data AS XML) AS event_xml
+    FROM sys.fn_xe_file_target_read_file
+    (
+        N'D:\XE\XE_Captura_Comandos_Erros*.xel',
+        NULL,
+        NULL,
+        NULL
+    )
+)
+SELECT
+    DATEADD(HOUR, -3, event_xml.value('(event/@timestamp)[1]', 'datetime2')) AS event_time_brt,
+    event_xml.value('(event/@timestamp)[1]', 'datetime2') AS event_time_utc,
+    event_name,
+
+    event_xml.value('(event/action[@name="database_name"]/value/text())[1]', 'sysname') AS database_name,
+    event_xml.value('(event/action[@name="username"]/value/text())[1]', 'sysname') AS username,
+    event_xml.value('(event/action[@name="server_principal_name"]/value/text())[1]', 'sysname') AS server_principal_name,
+
+    event_xml.value('(event/action[@name="client_hostname"]/value/text())[1]', 'nvarchar(256)') AS client_hostname,
+    event_xml.value('(event/action[@name="client_app_name"]/value/text())[1]', 'nvarchar(256)') AS client_app_name,
+    event_xml.value('(event/action[@name="session_id"]/value/text())[1]', 'int') AS session_id,
+
+    event_xml.value('(event/data[@name="error_number"]/value/text())[1]', 'int') AS error_number,
+    event_xml.value('(event/data[@name="severity"]/value/text())[1]', 'int') AS severity,
+    event_xml.value('(event/data[@name="message"]/value/text())[1]', 'nvarchar(max)') AS error_message,
+
+    event_xml.value('(event/action[@name="sql_text"]/value/text())[1]', 'nvarchar(max)') AS sql_text,
+
+    file_name,
+    file_offset
+FROM Eventos;
+GO
+
+Consulta:
+
+SELECT TOP 100
+    event_time_brt,
+    event_name,
+    database_name,
+    username,
+    server_principal_name,
+    client_hostname,
+    client_app_name,
+    session_id,
+    error_number,
+    severity,
+    error_message,
+    sql_text
+FROM master.dbo.vw_XE_Captura_Comandos_Erros
+ORDER BY event_time_utc DESC;
+5. Filtrar por usuário específico
+SELECT TOP 100 *
+FROM master.dbo.vw_XE_Captura_Comandos_Erros
+WHERE server_principal_name = 'davi.souza'
+   OR username = 'davi.souza'
+ORDER BY event_time_utc DESC;
+6. Filtrar somente erros
+SELECT TOP 100
+    event_time_brt,
+    database_name,
+    username,
+    server_principal_name,
+    client_hostname,
+    client_app_name,
+    error_number,
+    severity,
+    error_message,
+    sql_text
+FROM master.dbo.vw_XE_Captura_Comandos_Erros
+WHERE event_name = 'error_reported'
+ORDER BY event_time_utc DESC;
+7. Parar ou remover a sessão
+
+Parar:
+
+ALTER EVENT SESSION [XE_Captura_Comandos_Erros]
+ON SERVER
+STATE = STOP;
+GO
+
+Remover:
+
+DROP EVENT SESSION [XE_Captura_Comandos_Erros]
+ON SERVER;
+GO

@@ -1,0 +1,8 @@
+-- Executar em cada banco
+SELECT [type_desc] Tipo, 
+[name] as Usuario_Nome,principal_id as Usuario_ID,
+authentication_type_desc as Tipo_Autenticacao,
+create_date as Data_Criacao, modify_date as Data_Alteracao
+FROM sys.database_principals
+WHERE [type] <> 'R'
+ORDER BY Tipo,Usuario_Nome

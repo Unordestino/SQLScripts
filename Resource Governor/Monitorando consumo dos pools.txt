@@ -1,0 +1,5 @@
+/*****************************************
+ Monitorando consumo dos pools
+******************************************/
+SELECT [name], total_cpu_usage_ms, used_memory_kb
+FROM sys.dm_resource_governor_resource_pools

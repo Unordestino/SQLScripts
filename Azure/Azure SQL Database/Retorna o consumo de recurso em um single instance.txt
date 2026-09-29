@@ -1,0 +1,10 @@
+SELECT TOP 40
+    CONVERT(varchar(19), DATEADD(HOUR, -3, end_time), 120) AS horario_brasilia,
+    avg_cpu_percent        AS cpu_percent,
+    avg_data_io_percent    AS data_io_percent,
+    avg_log_write_percent  AS log_io_percent,
+    avg_memory_usage_percent AS memory_percent,
+    max_worker_percent     AS worker_percent,
+    max_session_percent    AS session_percent
+FROM sys.dm_db_resource_stats
+ORDER BY end_time DESC;

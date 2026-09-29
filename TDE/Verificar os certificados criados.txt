@@ -1,0 +1,9 @@
+SELECT 
+    name,
+    certificate_id,
+    principal_id,
+    pvt_key_encryption_type_desc,
+    issuer_name,
+    subject,
+    expiry_date
+FROM sys.certificates;

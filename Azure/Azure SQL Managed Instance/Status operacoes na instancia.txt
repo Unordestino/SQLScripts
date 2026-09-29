@@ -1,0 +1,8 @@
+SELECT operation as Operacao, major_resource_id as Banco,
+state_desc [Status], percent_complete as [% Completo],
+start_time as DataHora_Inicio, 
+last_modify_time as DataHora_Alteracao,
+start_time AT TIME ZONE 'UTC' AT TIME ZONE 'Bahia Standard Time' as DataHora_Inicio_Local, 
+last_modify_time AT TIME ZONE 'UTC' AT TIME ZONE 'Bahia Standard Time' as DataHora_Alteracao_Local
+FROM sys.dm_operation_status 
+ORDER BY last_modify_time desc

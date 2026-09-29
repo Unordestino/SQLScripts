@@ -1,0 +1,9 @@
+-- Executar na MASTER
+SELECT principal_id as Login_ID, [name] as Login_Nome, [type_desc] as Tipo, [SID]
+FROM sys.server_principals
+WHERE type = 'E'
+
+UNION ALL
+
+SELECT principal_id as Login_ID, [name] as Login_Nome, [type_desc] as Tipo, [SID]
+FROM sys.sql_logins

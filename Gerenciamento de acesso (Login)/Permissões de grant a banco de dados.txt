@@ -1,0 +1,81 @@
+SELECT 
+    dp.name AS PrincipalName,
+    dp.type_desc AS PrincipalType,
+
+    p.permission_name,
+    p.state_desc, -- GRANT / DENY / REVOKE
+    p.class_desc,
+
+    -- Nome do schema
+    CASE 
+        WHEN p.class_desc = 'SCHEMA' THEN s.name
+        WHEN p.class_desc = 'OBJECT_OR_COLUMN' THEN OBJECT_SCHEMA_NAME(p.major_id)
+    END AS SchemaName,
+
+    -- Nome do objeto
+    CASE 
+        WHEN p.class_desc = 'OBJECT_OR_COLUMN' THEN OBJECT_NAME(p.major_id)
+        ELSE NULL
+    END AS ObjectName,
+
+    -- Nome da coluna (se houver)
+    c.name AS ColumnName,
+
+    -- Nome completo (bem útil)
+    CASE 
+        WHEN p.class_desc = 'SCHEMA' 
+            THEN QUOTENAME(s.name)
+
+        WHEN p.class_desc = 'OBJECT_OR_COLUMN' AND c.name IS NULL
+            THEN QUOTENAME(OBJECT_SCHEMA_NAME(p.major_id)) + '.' + QUOTENAME(OBJECT_NAME(p.major_id))
+
+        WHEN p.class_desc = 'OBJECT_OR_COLUMN' AND c.name IS NOT NULL
+            THEN QUOTENAME(OBJECT_SCHEMA_NAME(p.major_id)) + '.' + QUOTENAME(OBJECT_NAME(p.major_id)) + '.' + QUOTENAME(c.name)
+    END AS FullObjectName
+
+FROM 
+    sys.database_permissions p
+
+JOIN 
+    sys.database_principals dp 
+        ON p.grantee_principal_id = dp.principal_id
+
+LEFT JOIN 
+    sys.schemas s 
+        ON p.class_desc = 'SCHEMA'
+        AND p.major_id = s.schema_id
+
+LEFT JOIN 
+    sys.columns c 
+        ON p.class_desc = 'OBJECT_OR_COLUMN'
+        AND p.minor_id = c.column_id
+        AND p.major_id = c.object_id
+
+WHERE 
+    dp.name = 'teste'
+
+ORDER BY 
+    p.class_desc,
+    SchemaName,
+    ObjectName,
+    ColumnName;
+	
+----------------------------------
+
+	SELECT 
+    dp.name AS PrincipalName,
+    dp.type_desc AS PrincipalType,
+    p.permission_name,
+    p.state_desc,
+    ob.name AS ObjectName,
+	ob.type_desc,
+	o.name AS ObjectSchema
+FROM 
+    sys.database_permissions p
+JOIN 
+    sys.database_principals dp ON p.grantee_principal_id = dp.principal_id
+LEFT JOIN 
+    sys.schemas o ON p.major_id = o.schema_id
+LEFT JOIN 
+	 sys.objects ob ON p.major_id = ob.object_id
+	WHERE dp.name = 'tESTE'

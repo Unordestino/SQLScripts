@@ -1,0 +1,11 @@
+SELECT 
+    r.command,
+    r.status,
+    r.percent_complete,
+    r.start_time,
+    r.estimated_completion_time / 1000 / 60 AS Estimativa_Minutos,
+    r.total_elapsed_time / 1000 / 60 AS Decorrido_Minutos
+FROM 
+    sys.dm_exec_requests r
+WHERE 
+    r.command IN ('DB STARTUP', 'ROLLBACK', 'ALTER DATABASE');

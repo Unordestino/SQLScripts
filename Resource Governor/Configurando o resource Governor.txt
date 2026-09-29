@@ -1,0 +1,144 @@
+use master
+go
+
+
+/****************************************
+ Verificando se RG está habilitado
+*****************************************/
+SELECT is_enabled FROM sys.resource_governor_configuration
+-- 0 está dezabilitado
+-- 1 está habilitado
+
+/***********************************
+ Criando Resource Pools
+************************************/
+
+-- Pool para OLTP
+CREATE RESOURCE POOL Pool_OLTP
+WITH (MAX_CPU_PERCENT = 70, MAX_MEMORY_PERCENT = 70)
+go
+
+
+-- Pool para Relatórios
+CREATE RESOURCE POOL Pool_Relatorio
+WITH (MAX_CPU_PERCENT = 30, MAX_MEMORY_PERCENT = 30)
+go
+
+/**********************************
+ Criando Workload Groups
+***********************************/
+CREATE WORKLOAD GROUP Group_OLTP
+USING Pool_OLTP
+go
+
+CREATE WORKLOAD GROUP Group_Relatorio
+USING Pool_Relatorio
+go
+
+
+/***********************************
+ Criando a Classifier Function
+************************************/
+CREATE or ALTER FUNCTION dbo.Classifica_Workload()
+RETURNS sysname
+WITH SCHEMABINDING
+as
+BEGIN
+
+DECLARE @Grupo sysname
+
+IF APP_NAME() LIKE '%Relatorio%'
+	SET @Grupo = 'Group_Relatorio'
+
+ELSE IF APP_NAME() LIKE '%OLTP%'
+	SET @Grupo = 'Group_OLTP'
+
+ELSE
+	SET @Grupo = 'default'
+
+RETURN @Grupo
+
+END
+go
+
+/*******************************************************
+ Associando a Classifier Function ao Resource Governor
+********************************************************/
+ALTER RESOURCE GOVERNOR
+WITH (CLASSIFIER_FUNCTION = dbo.Classifica_Workload)
+go
+
+
+/*********************************
+ Aplicando o Resource Governor
+**********************************/
+ALTER RESOURCE GOVERNOR RECONFIGURE
+go
+
+SELECT is_enabled FROM sys.resource_governor_configuration
+-- 1 foi habilitado
+
+/*******************************************
+ Abrir conexão 1 no SSMS com:
+ - Application Name=OLTP
+********************************************/
+USE AdventureWorks
+go
+
+SELECT * FROM Sales.SalesOrderDetail
+
+/*******************************************
+ Abrir conexão 2 no SSMS com:
+ - Application Name=Relatorio
+********************************************/
+USE AdventureWorks
+go
+
+SELECT sod.ProductID, SUM(sod.LineTotal) AS TotalVendas
+FROM Sales.SalesOrderDetail sod
+JOIN Sales.SalesOrderHeader soh ON sod.SalesOrderID = soh.SalesOrderID
+GROUP BY sod.ProductID
+ORDER BY TotalVendas DESC
+
+/**********************************************
+ Validando a classificação das sessões
+***********************************************/
+SELECT * FROM sys.dm_resource_governor_resource_pools
+SELECT * FROM sys.dm_resource_governor_workload_groups
+
+SELECT s.[session_id], s.login_name, s.[program_name],
+wg.name AS WorkloadGroup, rp.name AS ResourcePool
+FROM sys.dm_exec_sessions s
+JOIN sys.dm_resource_governor_workload_groups wg ON s.group_id = wg.group_id
+JOIN sys.dm_resource_governor_resource_pools rp ON wg.pool_id = rp.pool_id
+WHERE s.is_user_process = 1
+
+/*****************************************
+ Monitorando consumo dos pools
+******************************************/
+SELECT [name], total_cpu_usage_ms, used_memory_kb
+FROM sys.dm_resource_governor_resource_pools
+
+
+/**********************************
+ Remove configuração
+***********************************/
+ALTER RESOURCE GOVERNOR WITH (CLASSIFIER_FUNCTION = NULL)
+go
+
+ALTER RESOURCE GOVERNOR RECONFIGURE
+go
+
+DROP FUNCTION dbo.Classifica_Workload
+go
+
+DROP WORKLOAD GROUP Group_OLTP
+DROP WORKLOAD GROUP Group_Relatorio
+go
+
+DROP RESOURCE POOL Pool_OLTP
+DROP RESOURCE POOL Pool_Relatorio
+go
+
+ALTER RESOURCE GOVERNOR DISABLE
+go

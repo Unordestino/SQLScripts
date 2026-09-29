@@ -1,0 +1,30 @@
+SELECT 
+    tl.resource_type,
+    tl.resource_database_id,
+    DB_NAME(tl.resource_database_id) AS DatabaseName,
+
+    -- Aqui resolvemos o nome corretamente
+    CASE 
+        WHEN tl.resource_type = 'OBJECT' 
+            THEN OBJECT_NAME(tl.resource_associated_entity_id, tl.resource_database_id)
+        ELSE OBJECT_NAME(p.object_id, tl.resource_database_id)
+    END AS TableName,
+
+    i.name AS IndexName,
+    tl.request_mode,
+    tl.request_status,
+    tl.request_session_id,
+    tl.resource_associated_entity_id
+
+FROM sys.dm_tran_locks tl
+
+LEFT JOIN sys.partitions p 
+    ON tl.resource_associated_entity_id = p.hobt_id
+
+LEFT JOIN sys.indexes i 
+    ON p.object_id = i.object_id 
+    AND p.index_id = i.index_id
+
+WHERE tl.resource_type IN ('KEY', 'PAGE', 'RID', 'HOBT', 'OBJECT')
+
+ORDER BY tl.request_session_id;

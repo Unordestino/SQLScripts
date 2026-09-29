@@ -1,0 +1,209 @@
+CREATE PROCEDURE sp_MonitoraTime
+    @timeProc VARCHAR(50) -- Parâmetro de entrada, exemplo exec sp_MonitoraTime  @timeProc = '01:00:00' ' 
+AS
+BEGIN
+
+IF OBJECT_ID('tempdb..#MonitorTime') IS NOT NULL
+BEGIN
+    DROP TABLE #MonitorTime;
+END
+
+--Cria tabela para popular whoisactive
+
+CREATE TABLE #MonitorTime(
+	ID INT IDENTITY(1,1) PRIMARY KEY,
+	[Dt_Log] [datetime] NULL,
+	[dd hh:mm:ss.mss] [varchar](8000) NULL,
+	[database_name] [nvarchar](128) NULL,
+	[session_id] [smallint] NOT NULL,
+	[blocking_session_id] [smallint] NULL,
+	[sql_text] [xml] NULL,
+	[login_name] [nvarchar](128) NOT NULL,
+	[wait_info] [nvarchar](4000) NULL,
+	[status] [varchar](30) NOT NULL,
+	[percent_complete] [varchar](30) NULL,
+	[host_name] [nvarchar](128) NULL,
+	[sql_command] [xml] NULL,
+	[CPU] [varchar](100) NULL,
+	[CPU_delta] [varchar](100) NULL,
+	[reads] [varchar](100) NULL,
+	[reads_delta] [varchar](100) NULL,
+	[writes] [varchar](100) NULL,
+	[program_name] [nvarchar](500) NULL,
+	[open_tran_count] [int] NULL,
+	[query_plan] [xml] NULL
+)  
+
+
+
+--Popula tabela temporario com whoisactive
+
+EXEC sp_whoisactive @get_outer_command = 1, @delta_interval = 1,@get_plans = 1,
+										@output_column_list = '[collection_time][d%][session_id][blocking_session_id][sql_text][login_name][wait_info][status][percent_complete][host_name][database_name][sql_command][CPU][reads][CPU_delta][reads_delta][writes][program_name][open_tran_count][query_plan]', 
+										@destination_table = '#MonitorTime'
+										
+/*
+
+SELECT [Dt_Log], [dd hh:mm:ss.mss], [database_name], [session_id], [blocking_session_id], 
+[login_name],[status], [wait_info],  [sql_text]  FROM #MonitorTime ORDER BY [dd hh:mm:ss.mss] desc
+
+*/
+
+--Declarando váriaveis
+    DECLARE @ResultadoHTML NVARCHAR(MAX);
+    DECLARE @ResultadoTemp NVARCHAR(MAX);
+    DECLARE @ID INT, 
+			@Dt_Log [datetime],
+			@dd_hh_mm_ss_mss [varchar](8000),
+			@database_name [nvarchar](128), 
+			@session_id smallint, 
+			@blocking_session_id smallint,
+			@login_name [nvarchar](128),
+			@status [varchar](30),
+			@wait_info [nvarchar](4000),
+			@sql_text NVARCHAR(MAX);
+			
+
+    -- Início do HTML
+    SET @ResultadoHTML = N'<html>
+    <head>
+        <style type="text/css">
+            table { border: outset 2.25pt; }
+            thead { background: #0a51a8; }
+            th { color: #fff; padding: 10px; }
+            td { padding: 3.0pt 3.0pt 3.0pt 3.0pt; }
+        </style>
+    </head>
+    <body>
+        <img src="https://partner.microsoft.com/-/media/mssc/mpn/partner/licensing/logo-lanlink.png?la=pt-br&hash=6041EB66BE288DF6F056617328B7C958" title="logo-lanlink-01" alt="logo-lanlink-01">
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>Dt_log</th>
+					<th>dd hh:mm:ss.mss</th>
+                    <th>Database_name</th>
+                    <th>Session_id</th>
+                    <th>Blocking_session_id</th>
+                    <th>Login_name</th>
+					<th>Status</th>
+					<th>Wait_info</th>
+					<th>sql_text</th>
+                </tr>
+            </thead>
+            <tbody>';
+			
+			
+	-- Criar variáveis para armazenar os dados do cursor
+	DECLARE @ID2 INT
+	-- Declarar o cursor para selecionar dados da tabela #MonitorTime
+	DECLARE CursorTime CURSOR FOR
+	SELECT ID
+	FROM #MonitorTime;
+
+	-- Abrir o cursor
+	OPEN CursorTime;
+	-- Buscar o primeiro registro
+	FETCH NEXT FROM CursorTime INTO @ID2;
+	
+	
+--inicia o Cursor
+	WHILE @@FETCH_STATUS = 0
+BEGIN
+    
+	        -- Obter os dados do registro atual
+        SELECT @ID =  ID,
+			   @Dt_Log = [Dt_Log],
+               @dd_hh_mm_ss_mss = [dd hh:mm:ss.mss],   -- Converte para string no formato ISO
+               @database_name = [database_name],
+               @session_id = [session_id],
+			   @blocking_session_id = [blocking_session_id]  ,
+			   @login_name = [login_name],
+			   @status = [status],
+			   @wait_info = [wait_info],
+			   @sql_text = CONVERT(NVARCHAR(MAX), sql_text)
+        FROM #MonitorTime
+        WHERE ID  = @ID2
+
+		
+		-- Remove início e fim
+SET @sql_text = REPLACE(@sql_text, '<?query --', '');
+SET @sql_text = REPLACE(@sql_text, '--?>', '');
+
+ 
+ 
+	
+				        -- Formatar a linha em HTML		
+				SET @ResultadoTemp = N'<tr>
+		<td>' + ISNULL(CONVERT(NVARCHAR(30), @Dt_Log, 120), 'N/A') + N'</td>
+		<td>' + ISNULL(@dd_hh_mm_ss_mss, 'N/A') + N'</td>
+		<td>' + ISNULL(@database_name, 'N/A') + N'</td>
+		<td>' + ISNULL(CONVERT(NVARCHAR(10), @session_id), 'N/A') + N'</td>
+		<td>' + ISNULL(CONVERT(NVARCHAR(10), @blocking_session_id), 'N/A') + N'</td>
+		<td>' + ISNULL(@login_name, 'N/A') + N'</td>
+		<td>' + ISNULL(@status, 'N/A') + N'</td>
+		<td>' + ISNULL(@wait_info, 'N/A') + N'</td>
+		<td>' + ISNULL(@sql_text, 'N/A') + N'</td>
+		</tr>';
+
+        -- Adicionar ao HTML final
+        SET @ResultadoHTML += @ResultadoTemp;
+
+    -- Buscar o próximo registro
+    FETCH NEXT FROM CursorTime INTO @ID2;
+END;
+
+-- Fechar e desalocar o cursor
+CLOSE CursorTime;
+DEALLOCATE CursorTime;
+
+    -- Finalizar o HTML
+    SET @ResultadoHTML += N'</tbody></table>
+    <p>Relatório de monitoramento de duração de consultas, qualquer dúvida estamos à disposição.</p>
+    </body></html>';
+
+ 
+	
+
+--LOGICA RESPONSÁVEL POR VERIFICAR SE EXISTEM CONSULTAS EM EXECUÇÃO POR MAIS DE x MINUTOS
+DECLARE @tempo VARCHAR(50);
+
+SELECT TOP 1 @tempo = [dd hh:mm:ss.mss]
+FROM #MonitorTime
+ORDER BY [dd hh:mm:ss.mss] DESC;
+
+-- Remove os dias e pega só o tempo
+DECLARE @hora TIME;
+
+SET @hora = CAST(SUBSTRING(@tempo, CHARINDEX(' ', @tempo) + 1, LEN(@tempo)) AS TIME);
+
+IF @hora >= CAST(@timeProc AS TIME)
+BEGIN
+
+    -- Obter o e-mail do operador
+    DECLARE @operator_email NVARCHAR(256);
+    SELECT @operator_email = email_address
+    FROM msdb.dbo.sysoperators
+    WHERE name = 'DBA_Davi';--[DBA_Operator]
+
+
+	
+	--Data/hora formatada para assunto do e-mail
+	DECLARE @DataFormatada VARCHAR(25);
+	SET @DataFormatada = 
+    CONVERT(VARCHAR(10), GETDATE(), 111) + ' - ' +
+    CONVERT(VARCHAR(8), GETDATE(), 108);
+
+	--Texto para assunto do e-mail.
+	DECLARE @assunto VARCHAR (MAX)
+	SELECT @assunto = 'Relatório de monitoramento de duração de consultas: ' + @DataFormatada 
+
+    -- Enviar o e-mail com o resultado formatado
+    EXEC msdb.dbo.sp_send_dbmail
+         @profile_name = 'DBA_Operator',
+         @recipients = @operator_email,
+         @subject = @assunto,
+         @body = @ResultadoHTML,
+         @body_format = 'HTML';
+END
+
+END;

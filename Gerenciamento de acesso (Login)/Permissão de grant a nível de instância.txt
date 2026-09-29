@@ -1,0 +1,6 @@
+SELECT pr.principal_id, pr.name as Login_SrvRole, pr.type_desc as Tipo,   
+pe.state_desc as [Status], pe.permission_name as Permissao
+FROM sys.server_principals AS pr   
+JOIN sys.server_permissions AS pe ON pe.grantee_principal_id = pr.principal_id
+WHERE pr.name = 'Teste'
+ORDER BY Login_SrvRole, Permissao

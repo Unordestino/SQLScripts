@@ -1,0 +1,11 @@
+SELECT 
+    A.[name], 
+    A.is_master_key_encrypted_by_server, 
+    A.is_encrypted,
+    B.*
+FROM 
+    sys.databases A
+    JOIN sys.dm_database_encryption_keys B ON B.database_id = A.database_id
+
+
+	SELECT  database_id, create_date, modify_date, encryptor_type, encryption_state_desc   FROM sys.dm_database_encryption_keys

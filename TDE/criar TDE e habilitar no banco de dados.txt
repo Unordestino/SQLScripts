@@ -1,0 +1,26 @@
+use master
+go
+
+-- Cria Master Key
+-- DROP MASTER KEY
+CREATE MASTER KEY ENCRYPTION BY PASSWORD = 'Pa$$w0rd';
+
+-- Cria Certificado
+-- DROP CERTIFICATE DBCriptCert
+CREATE CERTIFICATE DBCriptCert WITH SUBJECT = 'Certificado para TDE', EXPIRY_DATE = '99991231'
+
+-- Backup Certificado
+BACKUP CERTIFICATE DBCriptCert TO FILE = 'C:\_HandsOn_AdmSQL\Backup\DBCriptCert.cer'
+WITH PRIVATE KEY (FILE = 'C:\_HandsOn_AdmSQL\Backup\DBCriptCert.key',
+ENCRYPTION BY PASSWORD = 'Pa$$w0rd')
+
+/*********************************
+ Habilitando TDE
+**********************************/
+use DBCript
+go
+
+CREATE DATABASE ENCRYPTION KEY WITH ALGORITHM = AES_128
+ENCRYPTION BY SERVER CERTIFICATE DBCriptCert
+
+ALTER DATABASE DBCript SET ENCRYPTION ON

@@ -1,0 +1,16 @@
+SELECT a.backup_finish_date as DataTermino,a.database_name as Banco, 
+case a.type 
+when 'D' then 'FULL'
+when 'I' then 'DIF'
+when 'L' then 'LOG' end as TipoBackup,
+b.physical_device_name as ArquivoBackup,
+a.[name] as NomeBackup,
+case a.is_snapshot when 1 then 'Sim' else 'Não' end as SnapshotBackup, 
+case a.is_copy_only when 1 then 'Sim' else 'Não' end as CopyOnly
+FROM  msdb..backupset a
+JOIN msdb..backupmediafamily b on b.media_set_id = a.media_set_id
+WHERE 1=1 
+and database_name = 'AulaDB'
+--and a.type <> 'L'
+--and backup_finish_date >= '20241021'
+ORDER BY backup_finish_date desc
