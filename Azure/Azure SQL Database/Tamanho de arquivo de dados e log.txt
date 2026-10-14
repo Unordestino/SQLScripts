@@ -1,0 +1,29 @@
+SELECT
+    type_desc AS tipo,
+    SUM(size) * 8.0 / 1024 / 1024 AS tamanho_GB
+FROM sys.database_files
+GROUP BY type_desc;
+--------------------------------------------
+SELECT
+    total_log_size_in_bytes / 1024.0 / 1024 / 1024 AS log_total_GB,
+    used_log_space_in_bytes / 1024.0 / 1024 / 1024 AS log_usado_GB,
+    used_log_space_in_percent AS log_usado_percent
+FROM sys.dm_db_log_space_usage;
+
+-----------------------------
+SELECT
+    SUM(size) * 8.0 / 1024 / 1024 AS tamanho_total_GB,
+    SUM(FILEPROPERTY(name, 'SpaceUsed')) * 8.0 / 1024 / 1024 AS usado_total_GB,
+    SUM(size - FILEPROPERTY(name, 'SpaceUsed')) * 8.0 / 1024 / 1024 AS livre_total_GB,
+    SUM(FILEPROPERTY(name, 'SpaceUsed')) * 100.0 / SUM(size) AS percentual_usado
+FROM sys.database_files
+WHERE type_desc = 'ROWS';
+-----------------------------
+
+SELECT
+    SUM(size) * 8.0 / 1024 / 1024 AS tamanho_total_GB,
+    SUM(FILEPROPERTY(name, 'SpaceUsed')) * 8.0 / 1024 / 1024 AS usado_total_GB,
+    SUM(size - FILEPROPERTY(name, 'SpaceUsed')) * 8.0 / 1024 / 1024 AS livre_total_GB,
+    SUM(FILEPROPERTY(name, 'SpaceUsed')) * 100.0 / SUM(size) AS percentual_usado
+FROM sys.database_files
+WHERE type_desc = 'LOG';
