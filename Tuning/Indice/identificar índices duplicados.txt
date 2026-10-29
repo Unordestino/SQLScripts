@@ -1,5 +1,5 @@
 ;WITH CTE_Indices as (
-SELECT distinct object_name(i.object_id) as Tabela,i.name as Indice,
+SELECT distinct object_name(i.object_id) as Tabela,i.name as Indice, i.[type_desc],
 (SELECT distinct stuff((select ', ' + c.name
  FROM sys.index_columns ic1 
  JOIN sys.columns c ON ic1.object_id = c.object_id and ic1.column_id = c.column_id
@@ -25,7 +25,7 @@ and i.[type_desc] in ('NONCLUSTERED','CLUSTERED')),
 
 CTE_Duplicado as (
 SELECT ROW_NUMBER() OVER (PARTITION BY Tabela, Colunas_Chave, Colunas_Include ORDER BY Indice) as Ordem,
-Tabela, Indice, Colunas_Chave, Colunas_Include
+Tabela, Indice, [type_desc], Colunas_Chave, Colunas_Include
 FROM CTE_Indices)
  
 SELECT *
