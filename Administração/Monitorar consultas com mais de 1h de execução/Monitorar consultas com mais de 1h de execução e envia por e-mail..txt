@@ -75,7 +75,7 @@ SELECT [Dt_Log], [dd hh:mm:ss.mss], [database_name], [session_id], [blocking_ses
         </style>
     </head>
     <body>
-        <img src="https://partner.microsoft.com/-/media/mssc/mpn/partner/licensing/logo-lanlink.png?la=pt-br&hash=6041EB66BE288DF6F056617328B7C958" title="logo-lanlink-01" alt="logo-lanlink-01">
+        <img src="https://suaimagem.com.br" title="sua-logo01" alt="sua-logo01">
         <table border="1">
             <thead>
                 <tr>
